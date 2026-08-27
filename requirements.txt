@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+pytest
+httpx
+pydantic
+pydantic-settings
+sentence-transformers 
+numpy
