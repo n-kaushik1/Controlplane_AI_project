@@ -1470,6 +1470,17 @@ pip install -r requirements.txt
 
 uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
+Also make .env file with following:
+```text
+MODEL_PROVIDER="openrouter"
+MODEL_NAME="openrouter/free"
+MODEL_BASE_URL="https://openrouter.ai/api/v1"
+MODEL_TEMPERATURE="0.2"
+MODEL_MAX_TOKENS="512"
+MODEL_TIMEOUT_SECONDS="60"
+MODEL_API_KEY=your_real_openrouter_key
+TAVILY_API_KEY=your_real_tavily_key
+```
 
 Then open:
 
