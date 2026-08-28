@@ -13,8 +13,15 @@ from app.core.config import settings
 # PATHS
 # =========================================================
 
-BASE_DIR = Path(__file__).resolve().parent.parent
-DASHBOARD_DIR = BASE_DIR / "dashboard"
+BASE_DIR = Path(
+    __file__
+).resolve().parent.parent
+
+
+DASHBOARD_DIR = (
+    BASE_DIR
+    / "dashboard"
+)
 
 
 # =========================================================
@@ -32,68 +39,102 @@ app = FastAPI(
 
 
 # =========================================================
-# CORS
+# CORS — CONTROLPLANE DASHBOARD
 # =========================================================
 
 app.add_middleware(
     CORSMiddleware,
+
     allow_origins=[
         "http://127.0.0.1:5500",
         "http://localhost:5500",
     ],
+
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+
+    allow_methods=[
+        "*"
+    ],
+
+    allow_headers=[
+        "*"
+    ],
 )
-
-
-# =========================================================
-# API ROUTES
-# =========================================================
-
-app.include_router(router)
 
 
 # =========================================================
 # DASHBOARD STATIC FILES
 # =========================================================
 
-if DASHBOARD_DIR.exists():
+app.mount(
+    "/dashboard",
+    StaticFiles(
+        directory=str(
+            DASHBOARD_DIR
+        )
+    ),
+    name="dashboard",
+)
 
-    app.mount(
-        "/dashboard",
-        StaticFiles(directory=str(DASHBOARD_DIR)),
-        name="dashboard",
+
+# =========================================================
+# DASHBOARD CSS
+# =========================================================
+
+@app.get(
+    "/style.css"
+)
+def dashboard_css():
+
+    return FileResponse(
+        DASHBOARD_DIR
+        / "style.css",
+
+        media_type="text/css",
     )
 
 
 # =========================================================
-# ROOT — SERVE DASHBOARD
+# DASHBOARD JAVASCRIPT
 # =========================================================
 
-@app.get("/", include_in_schema=False)
+@app.get(
+    "/app.js"
+)
+def dashboard_js():
+
+    return FileResponse(
+        DASHBOARD_DIR
+        / "app.js",
+
+        media_type=(
+            "application/javascript"
+        ),
+    )
+
+
+# =========================================================
+# API ROUTES
+# =========================================================
+
+app.include_router(
+    router
+)
+
+
+# =========================================================
+# ROOT — CONTROLPLANE DASHBOARD
+# =========================================================
+
+@app.get(
+    "/",
+    include_in_schema=False,
+)
 def root():
 
-    dashboard_index = DASHBOARD_DIR / "index.html"
+    return FileResponse(
+        DASHBOARD_DIR
+        / "index.html",
 
-    if dashboard_index.exists():
-        return FileResponse(dashboard_index)
-
-    return {
-        "service": settings.APP_NAME,
-        "version": "4.0.0",
-        "status": "running",
-        "error": "Dashboard files not found",
-    }
-
-
-# =========================================================
-# HEALTH CHECK
-# =========================================================
-
-@app.get("/healthz", include_in_schema=False)
-def healthz():
-
-    return {
-        "status": "healthy"
-    }
+        media_type="text/html",
+    )
