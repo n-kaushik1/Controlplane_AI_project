@@ -20,7 +20,7 @@ reviews, and operational metrics.
 
 ### 🎥 Demo Video
 
-**[▶ Watch the ControlPlane.ai Prototype Demo](DEMO_VIDEO_URL)**
+**[▶ Watch the ControlPlane.ai Prototype Demo](https://drive.google.com/file/d/17j1ylfG507OqPwjgSTJWkZZlegKaGf30/view?usp=sharing)**
 
 
 
