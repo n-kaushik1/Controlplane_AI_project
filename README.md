@@ -11,7 +11,7 @@ reviews, and operational metrics.
 
 **Live prototype:** https://controlplane-ai-bhn7.onrender.com\
 **Public repository:**
-[https://github.com/n-kaushik1/Controlplane_AI_project\](https://github.com/n-kaushik1/Controlplane_AI_project)
+[ControlPlane_AI](https://github.com/n-kaushik1/Controlplane_AI_project.git)
 **License:** MIT
 
 ---
