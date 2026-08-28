@@ -1,519 +1,926 @@
-# ControlPlane AI
+# ControlPlane.ai
 
-ControlPlane AI is a governance and safety layer for LLM-powered applications. It sits between an application and an LLM provider and evaluates requests and model responses before allowing them to proceed.
+> **AI Governance, Observability, Factuality & Human Review**
 
-The prototype is designed to demonstrate how an AI system can apply **policy-driven governance, risk assessment, factuality verification, human oversight, auditability, and monitoring** around LLM usage.
+ControlPlane.ai is a prototype AI governance platform designed to place
+a governance and observability layer around AI/LLM applications. Instead
+of treating an LLM call as a direct `prompt → response` interaction,
+ControlPlane introduces policy-driven checks before and after model
+execution and records the resulting decisions, risks, costs, evidence,
+reviews, and operational metrics.
 
----
-
-## What the Project Does
-
-ControlPlane AI provides a centralized control layer for LLM requests.
-
-A typical request flows through the system as:
-
-```text
-User Request
-     |
-     v
-Request Validation
-     |
-     v
-Request Governance
-(Bias / Cost / Privacy / Security)
-     |
-     v
-Policy Evaluation
-     |
-     +---- BLOCK ----> Request stopped
-     |
-     +---- REVIEW ---> Human review queue
-     |
-     +---- ALLOW ----> LLM invocation
-                         |
-                         v
-                 Response Governance
-                 (Factuality / Bias /
-                  Privacy / Security)
-                         |
-                         v
-                 Final Policy Decision
-                         |
-              +----------+----------+
-              |          |          |
-            ALLOW      REVIEW      BLOCK
-              |          |          |
-              v          v          v
-           Output    Human Review  Output blocked
-```
-
-The goal is not to replace an LLM. Instead, ControlPlane acts as a **governance control plane around the LLM**.
+**Live prototype:** https://controlplane-ai-bhn7.onrender.com\
+**Public repository:**
+https://github.com/n-kaushik1/Controlplane_AI_project\
+**License:** MIT
 
 ---
 
-## Key Capabilities
+## Prototype Demo
 
-### 1. Request Governance
+### 🎥 Demo Video
 
-Before an LLM is called, the request can be evaluated by multiple governance agents:
+**[▶ Watch the ControlPlane.ai Prototype Demo](DEMO_VIDEO_URL)**
 
-- **Security Agent** — detects potentially unsafe or suspicious request patterns.
-- **Privacy Agent** — detects sensitive information and privacy-related signals.
-- **Bias Agent** — checks for obvious group-based bias patterns.
-- **Cost Agent** — estimates token usage and checks configured compute/cost limits.
+> **Submission note:** Replace `DEMO_VIDEO_URL` above with the public
+> YouTube, Google Drive, Loom, or other shareable URL for the final
+> prototype demonstration video.
 
-The agents produce risk, status, confidence, reasons, and supporting signals.
+The demo should ideally cover:
 
----
-
-### 2. Response Governance
-
-After the model generates a response, ControlPlane evaluates the response before returning it to the user.
-
-The response governance layer supports:
-
-- Factuality verification
-- Evidence-based verification
-- Bias checks
-- Privacy checks
-- Security checks
-- Policy evaluation
-- Human review when required
-
-This ensures that a request being safe does not automatically mean that the generated answer is safe to release.
+1.  Opening the deployed ControlPlane.ai dashboard.
+2.  Submitting a prompt through **Test AI Response**.
+3.  Showing the governance decision and risk information.
+4.  Showing factuality/evidence information when applicable.
+5.  Demonstrating the **Human Reviews** workflow for a request requiring
+    review.
+6.  Resolving a review and showing the resulting decision.
+7.  Showing **Audit Log**, **Metrics**, and observability information.
 
 ---
 
-### 3. Factuality and Evidence
+## Table of Contents
 
-The prototype includes a factuality pipeline for checking model-generated claims.
+- [Overview](#overview)
+- [Problem Statement](#problem-statement)
+- [Solution](#solution)
+- [Key Capabilities](#key-capabilities)
+- [Solution Architecture](#solution-architecture)
+- [Request Lifecycle](#request-lifecycle)
+- [Governance Architecture](#governance-architecture)
+- [Factuality and Evidence](#factuality-and-evidence)
+- [Human Review](#human-review)
+- [Observability and Auditability](#observability-and-auditability)
+- [Policy Profiles](#policy-profiles)
+- [Project Structure](#project-structure)
+- [Technology Stack](#technology-stack)
+- [Dependencies](#dependencies)
+- [Configuration](#configuration)
+- [Local Installation](#local-installation)
+- [Running the Application](#running-the-application)
+- [Using the API](#using-the-api)
+- [Dashboard](#dashboard)
+- [Testing](#testing)
+- [Deployment](#deployment)
+- [Design Decisions](#design-decisions)
+- [Limitations and Prototype Scope](#limitations-and-prototype-scope)
+- [Future Improvements](#future-improvements)
+- [License](#license)
 
-It can use:
+---
 
-- Local evidence
-- Evidence retrieval
-- Web evidence retrieval
-- Claim extraction
-- Evidence verification
+## Overview
 
-The project contains an evidence store and an indexed evidence dataset under:
+ControlPlane.ai is implemented as a FastAPI-based governance middleware
+layer with a browser dashboard.
+
+The central design principle is:
 
 ```text
-data/
+Application / User
+        |
+        v
++----------------------+
+|   ControlPlane.ai    |
+| Governance Gateway   |
++----------------------+
+        |
+        +--------------------+
+        |                    |
+        v                    v
+Pre-request checks     Model / LLM Provider
+        |                    |
+        +---------+----------+
+                  |
+                  v
+        Post-response checks
+                  |
+        +---------+----------+
+        |                    |
+        v                    v
+   Final Decision      Audit + Metrics
+        |
+        +--------------------------+
+        |            |             |
+        v            v             v
+      ALLOW        REVIEW        BLOCK
+                       |
+                       v
+                Human Reviewer
 ```
 
-The factuality result can influence the final governance decision.
+The platform is intended to demonstrate how governance can become an
+executable part of an AI system rather than a separate documentation or
+compliance activity.
 
-For example:
+---
+
+## Problem Statement
+
+AI systems can produce useful responses quickly, but production
+deployment introduces additional concerns:
+
+- Unsafe or malicious inputs
+- Privacy and PII exposure
+- Potentially biased outputs
+- Factual errors and unsupported claims
+- Uncontrolled inference cost
+- Unclear governance decisions
+- Lack of human escalation
+- Limited auditability
+- Difficulty understanding model behavior over time
+
+A simple LLM integration generally focuses on generating a response.
+ControlPlane.ai focuses on the broader lifecycle:
 
 ```text
-Model Response
-      |
-      v
-Claim Extraction
-      |
-      v
-Evidence Retrieval
-      |
-      v
-Claim Verification
-      |
-      v
-Factuality Result
-      |
-      v
-Response Policy
+Request
+  ↓
+Validate
+  ↓
+Govern
+  ↓
+Generate
+  ↓
+Verify
+  ↓
+Govern Again
+  ↓
+Decide
+  ↓
+Audit / Measure / Review
 ```
 
 ---
 
-### 4. Risk Profiles
+## Solution
 
-The project supports configurable risk profiles for different AI use cases.
+ControlPlane.ai introduces a runtime gateway between the application and
+the model provider.
 
-Current profiles include:
+The gateway:
 
-#### Customer Support
-
-Designed for customer-facing AI where safety, privacy, security, factuality, and responsive interaction are important.
-
-```text
-customer_support
-```
-
-#### Internal Copilot
-
-Designed for employee-facing AI with stronger emphasis on grounded answers, enterprise data protection, source traceability, and productivity.
-
-```text
-internal_copilot
-```
-
-#### Regulated Decision
-
-Designed for high-risk or regulated decision-support workflows with stricter thresholds and stronger human oversight.
-
-```text
-regulated_decision
-```
-
-Each profile can define controls such as:
-
-- Maximum risk
-- Maximum uncertainty
-- Maximum cost
-- Maximum latency
-- Factuality requirement
-- Human review requirement
-- Privacy requirement
-- Bias requirement
-- Security threshold
-- Consequential-action review
-- Regulatory context
-- Governance priorities
-- Multi-turn support
+1.  Receives and validates the request.
+2.  Generates or preserves a request identifier.
+3.  Runs pre-request governance checks.
+4.  Aggregates governance-agent results.
+5.  Applies policy-driven decision logic.
+6.  Blocks unsafe requests before model execution when required.
+7.  Sends allowed requests to the model provider.
+8.  Runs post-response governance, including factuality checks.
+9.  Produces a final governance decision.
+10. Creates a human-review item when the decision is `REVIEW`.
+11. Records audit information.
+12. Collects operational metrics.
+13. Exposes the state through API endpoints and the dashboard.
 
 ---
 
-## Policy Decisions
+# Key Capabilities
 
-The policy engine can produce three primary outcomes:
+## 1. Security Governance
 
-### ALLOW
+The security agent checks request/response content for security-related
+risks and contributes a standardized governance result.
 
-The request or response satisfies the configured governance requirements.
+## 2. Privacy Governance
+
+The privacy agent is responsible for identifying privacy/PII-related
+concerns.
+
+## 3. Bias Governance
+
+The bias agent evaluates text for potential bias-related concerns.
+
+## 4. Cost Governance
+
+The cost agent estimates model usage/cost information and contributes
+cost-related governance signals.
+
+## 5. Factuality Governance
+
+The factuality subsystem:
+
+- Extracts claims from generated responses.
+- Retrieves relevant evidence.
+- Verifies claims against available evidence.
+- Produces verification information.
+- Feeds factuality results back into governance.
+
+## 6. Human Review
+
+Requests whose final governance decision is `REVIEW` can be placed into
+a review queue.
+
+Reviewers can:
+
+- View pending reviews.
+- Inspect the request and generated response.
+- Review the risk and reason.
+- Resolve the review.
+- Provide reviewer identity.
+- Add reviewer comments.
+- Produce a final decision such as `ALLOW`, `BLOCK`, `EDIT`, or
+  `REJECT`.
+
+## 7. Audit Logging
+
+Governance and review events are recorded for traceability.
+
+The project includes JSONL-based audit/feedback storage:
+
+```text
+logs/audit.jsonl
+logs/feedback.jsonl
+```
+
+## 8. Observability
+
+The monitoring subsystem exposes:
+
+- Total request volume
+- Decision counts
+- Decision rates
+- Risk statistics
+- Latency statistics
+- Model latency
+- Estimated cost
+- Human-review statistics
+- Recent governed request events
+
+---
+
+# Solution Architecture
+
+```mermaid
+flowchart TD
+
+    U[User / Application] --> API[FastAPI API]
+
+    API --> RG[Review-Aware Gateway]
+
+    RG --> GW[Request Gateway]
+
+    GW --> VALIDATE[Input Validation]
+
+    VALIDATE --> PRE[Pre-Request Governance]
+
+    PRE --> ORCH[Agent Orchestrator]
+
+    ORCH --> SEC[Security Agent]
+    ORCH --> PRIV[Privacy Agent]
+    ORCH --> BIAS[Bias Agent]
+    ORCH --> COST[Cost Agent]
+
+    SEC --> AGG[Governance Aggregation]
+    PRIV --> AGG
+    BIAS --> AGG
+    COST --> AGG
+
+    AGG --> POLICY[Policy / Decision Logic]
+
+    POLICY -->|BLOCK| BLOCK[Blocked Response]
+    POLICY -->|ALLOW| MODEL[Model Gateway]
+
+    MODEL --> PROVIDER[Model Provider]
+
+    PROVIDER --> RESPONSE[Model Response]
+
+    RESPONSE --> POST[Post-Response Governance]
+
+    POST --> FACT[Factuality Agent]
+    POST --> BIAS2[Bias]
+    POST --> PRIV2[Privacy]
+    POST --> SEC2[Security]
+    POST --> COST2[Cost]
+
+    FACT --> FINAL[Final Governance Decision]
+    BIAS2 --> FINAL
+    PRIV2 --> FINAL
+    SEC2 --> FINAL
+    COST2 --> FINAL
+
+    FINAL -->|ALLOW| OUT[Final Response]
+    FINAL -->|BLOCK| OUT
+    FINAL -->|REVIEW| REVIEW[Human Review Queue]
+
+    REVIEW --> RESOLVE[Human Review Resolution]
+
+    OUT --> AUDIT[Audit Logger]
+    REVIEW --> AUDIT
+    RESOLVE --> AUDIT
+
+    GW --> METRICS[Metrics Collector]
+    METRICS --> DASH[Observability Dashboard]
+
+    AUDIT --> DASH
+```
+
+---
+
+# Request Lifecycle
+
+The runtime request path is intentionally separated into stages.
+
+## Stage 1 --- Request Reception
+
+The request enters the API through:
+
+```text
+POST /api/generate
+```
+
+The request contains a prompt and optional metadata.
+
+A request ID is preserved when supplied or generated when missing.
+
+## Stage 2 --- Input Validation
+
+The gateway verifies that:
+
+- The prompt is a string.
+- The prompt is not empty.
+
+Invalid input is safely blocked.
+
+## Stage 3 --- Pre-Request Governance
+
+The `AgentOrchestrator` coordinates governance agents before the model
+is called.
+
+Current governance components include:
+
+```text
+Security
+Privacy
+Bias
+Cost
+```
+
+Their results are standardized through the agent result abstraction and
+aggregated by the orchestrator.
+
+## Stage 4 --- Policy Decision
+
+Governance results are used to determine the request action.
+
+Conceptually:
 
 ```text
 ALLOW
-```
-
-### REVIEW
-
-The request or response requires human oversight before it can proceed or be released.
-
-```text
+MODIFY
 REVIEW
-```
-
-### BLOCK
-
-The request or response violates a blocking condition or exceeds a critical policy threshold.
-
-```text
 BLOCK
 ```
 
-The policy engine also returns:
+The policy layer contains configurable risk, uncertainty, cost, privacy,
+bias, security, and factuality requirements.
 
-- Aggregated risk
-- Decision reason
-- Triggered rules
-- Policy name
-- Uncertainty
-- Verification status
-- Agent count
-- Risk thresholds
-- Security threshold
-- Human-review requirements
-- Other policy metadata
+## Stage 5 --- Model Execution
 
----
+If the request is allowed to proceed, the gateway calls the configured
+model provider through the model abstraction.
 
-## Human Review
+The architecture deliberately separates the model provider from
+governance logic.
 
-ControlPlane includes a human-review workflow for cases that require additional oversight.
+## Stage 6 --- Post-Response Governance
 
-A review can contain information such as:
+The generated response is inspected again.
 
-- Request
-- Model response
-- Governance decision
-- Risk information
-- Factuality information
-- Evidence
-- Review status
-- Reviewer decision
-- Resolution information
-- Request ID
+This is important because a safe request can still produce an unsafe,
+biased, privacy-sensitive, expensive, or factually unsupported response.
 
-Human review decisions can resolve a pending governance case.
+## Stage 7 --- Factuality Verification
 
-This is especially important for higher-risk workflows where fully automated decisions are not appropriate.
-
----
-
-## Audit Logging
-
-The prototype includes an audit logging system.
-
-Important events in the lifecycle of a request can be recorded, including:
-
-- Request received
-- Input validation
-- Governance execution
-- Policy decision
-- Model invocation
-- Response governance
-- Human review
-- Final decision
-- Errors
-
-Audit information supports traceability and debugging.
-
-Audit logs are written to:
+For factual responses, the factuality subsystem can:
 
 ```text
-logs/
+Generated Response
+        ↓
+Claim Extraction
+        ↓
+Evidence Retrieval
+        ↓
+Claim Verification
+        ↓
+Factuality Result
 ```
 
-Generated runtime logs should generally not be committed to a public repository.
+Factuality results are incorporated into the broader governance
+decision.
 
----
+## Stage 8 --- Final Decision
 
-## Monitoring and Metrics
+The system produces a final governance action.
 
-The project contains monitoring and metrics components for observing system behavior.
-
-The monitoring layer can support analysis of areas such as:
-
-- Governance decisions
-- Risk
-- Latency
-- Token usage
-- Cost
-- Agent performance
-- Model activity
-- Review activity
-- Operational behavior
-
-The goal is to make governance measurable rather than treating it as an invisible middleware layer.
-
----
-
-## Feedback
-
-The prototype includes feedback and review components that can record feedback associated with governance decisions.
-
-This provides a foundation for evaluating governance quality and improving the system over time.
-
-Relevant components are located under:
+Typical actions are:
 
 ```text
-app/feedback/
+ALLOW
+BLOCK
+REVIEW
+```
+
+## Stage 9 --- Human Review
+
+When the final action is `REVIEW`, the review-aware gateway creates a
+review item.
+
+The review preserves the request ID so that the original request,
+governance decision, review, feedback, and audit events can be
+correlated.
+
+## Stage 10 --- Audit and Metrics
+
+The request lifecycle contributes to:
+
+- Audit logs
+- Request metrics
+- Risk metrics
+- Cost metrics
+- Performance metrics
+- Review metrics
+- Dashboard observability
+
+---
+
+# Governance Architecture
+
+The governance system is deliberately modular.
+
+```text
+                    +----------------+
+                    | AgentOrchestrator|
+                    +--------+-------+
+                             |
+          +------------------+------------------+
+          |          |          |        |       |
+          v          v          v        v       v
+      Security    Privacy     Bias     Cost   Factuality
+          |          |          |        |       |
+          +----------+----------+--------+-------+
+                             |
+                             v
+                    Standardized Results
+                             |
+                             v
+                    Governance Aggregation
+                             |
+                             v
+                      Policy Decision
+```
+
+The `RequestGateway` does not need to know the implementation details of
+each agent. It consumes the standardized orchestration result.
+
+This keeps governance logic extensible.
+
+---
+
+# Factuality and Evidence
+
+Factuality is implemented as a governance component rather than as an
+isolated post-processing utility.
+
+Relevant modules include:
+
+```text
+app/core/factuality_engine.py
+app/core/evidence_retriever.py
+app/core/web_evidence_retriever.py
+
+app/evidence/claims.py
+app/evidence/retriever.py
+app/evidence/store.py
+app/evidence/verifier.py
+
+app/agents/factuality_agent.py
+```
+
+The project also includes local evidence data:
+
+```text
+data/evidence.json
+data/evidence_index.npz
+```
+
+The factuality pipeline is conceptually:
+
+```text
+Response
+   |
+   v
+Claim Extraction
+   |
+   v
+Evidence Retrieval
+   |
+   v
+Evidence Matching
+   |
+   v
+Claim Verification
+   |
+   v
+Factuality Governance Result
+```
+
+The factuality agent is integrated into the main governance orchestrator
+so factuality can influence the final response decision.
+
+---
+
+# Human Review
+
+Human review is implemented as a separate integration layer around the
+existing gateway.
+
+```text
+RequestGateway
+      |
+      v
+Governance Decision
+      |
+      +------ ALLOW/BLOCK ------> Response
+      |
+      +------ REVIEW -----------> ReviewService
+                                      |
+                                      v
+                                 ReviewQueue
+                                      |
+                                      v
+                                Human Reviewer
+                                      |
+                                      v
+                              Final Decision
+                                      |
+                                      v
+                              Feedback + Audit
+```
+
+The review subsystem includes:
+
+```text
+app/feedback/models.py
+app/feedback/review_queue.py
+app/feedback/store.py
+app/feedback/service.py
+app/gateway/review_gateway.py
+```
+
+Review resolution also supports `REJECT`, which is surfaced as a
+rejected review status.
+
+---
+
+# Observability and Auditability
+
+The monitoring subsystem is implemented in:
+
+```text
+app/monitoring/metrics.py
+app/monitoring/aggregator.py
+```
+
+The API exposes monitoring information through endpoints such as:
+
+```text
+GET /api/metrics
+GET /api/metrics/dashboard
+GET /api/metrics/events
+
+GET /api/metrics/decisions
+GET /api/metrics/risk
+GET /api/metrics/performance
+GET /api/metrics/cost
+GET /api/metrics/reviews
+
+GET /api/observability
+GET /api/observability/metrics
+GET /api/observability/events
+GET /api/observability/health
+```
+
+The audit subsystem is implemented in:
+
+```text
+app/audit/logger.py
+```
+
+Audit events are intended to provide traceability across governed
+requests and human-review actions.
+
+---
+
+# Policy Profiles
+
+The policy layer defines use-case-specific governance profiles.
+
+Current profiles include:
+
+Profile Block Risk Review Risk Max Uncertainty Max Cost
+
+---
+
+`customer_support` 0.85 0.60 0.75 0.05
+`internal_copilot` 0.80 0.55 0.70 0.10
+`decision_support` 0.65 0.35 0.45 0.20
+`regulated` 0.50 0.25 0.30 0.25
+
+All current profiles require factual verification and enforce privacy,
+bias, and security checks.
+
+These thresholds are defined in:
+
+```text
+app/policies/policies.py
+```
+
+and policy behavior is handled by:
+
+```text
+app/policies/engine.py
 ```
 
 ---
 
-# Project Architecture
-
-The main application structure is:
+# Project Structure
 
 ```text
-ControlPlane AI
+Controlplane_AI_project/
 │
-├── API
-│   └── routes.py
+├── app/
+│   ├── __init__.py
+│   ├── main.py
+│   │
+│   ├── actions/
+│   │   └── executor.py
+│   │
+│   ├── agents/
+│   │   ├── base.py
+│   │   ├── security_agent.py
+│   │   ├── privacy_agent.py
+│   │   ├── bias_agent.py
+│   │   ├── cost_agent.py
+│   │   ├── factuality_agent.py
+│   │   └── orchestrator.py
+│   │
+│   ├── api/
+│   │   └── routes.py
+│   │
+│   ├── audit/
+│   │   └── logger.py
+│   │
+│   ├── context/
+│   │   ├── request_context.py
+│   │   └── risk_profiles.py
+│   │
+│   ├── core/
+│   │   ├── config.py
+│   │   ├── factuality_engine.py
+│   │   ├── evidence_retriever.py
+│   │   └── web_evidence_retriever.py
+│   │
+│   ├── evidence/
+│   │   ├── claims.py
+│   │   ├── retriever.py
+│   │   ├── store.py
+│   │   └── verifier.py
+│   │
+│   ├── feedback/
+│   │   ├── models.py
+│   │   ├── review_queue.py
+│   │   ├── service.py
+│   │   └── store.py
+│   │
+│   ├── gateway/
+│   │   ├── model_gateway.py
+│   │   ├── request_gateway.py
+│   │   └── review_gateway.py
+│   │
+│   ├── models/
+│   │   └── provider.py
+│   │
+│   ├── monitoring/
+│   │   ├── metrics.py
+│   │   └── aggregator.py
+│   │
+│   └── policies/
+│       ├── engine.py
+│       └── policies.py
 │
-├── Gateway
-│   ├── request_gateway.py
-│   ├── model_gateway.py
-│   └── review_gateway.py
-│
-├── Agents
-│   ├── base.py
-│   ├── orchestrator.py
-│   ├── bias_agent.py
-│   ├── cost_agent.py
-│   ├── factuality_agent.py
-│   ├── privacy_agent.py
-│   └── security_agent.py
-│
-├── Policies
-│   ├── engine.py
-│   └── policies.py
-│
-├── Evidence
-│   ├── claims.py
-│   ├── retriever.py
-│   ├── store.py
-│   └── verifier.py
-│
-├── Core
-│   ├── config.py
-│   ├── evidence_retriever.py
-│   ├── factuality_engine.py
-│   └── web_evidence_retriever.py
-│
-├── Context
-│   ├── request_context.py
-│   └── risk_profiles.py
-│
-├── Feedback
-│   ├── models.py
-│   ├── review_queue.py
-│   ├── service.py
-│   └── store.py
-│
-├── Audit
-│   └── logger.py
-│
-├── Monitoring
-│   ├── aggregator.py
-│   └── metrics.py
-│
-├── Actions
-│   └── executor.py
-│
-├── Dashboard
+├── dashboard/
 │   ├── index.html
 │   ├── app.js
 │   └── style.css
 │
-├── Data
+├── data/
 │   ├── evidence.json
 │   └── evidence_index.npz
 │
-└── Tests
+├── logs/
+│   ├── audit.jsonl
+│   └── feedback.jsonl
+│
+├── tests/
+│   ├── test_actions.py
+│   ├── test_agents.py
+│   ├── test_audit.py
+│   ├── test_context.py
+│   ├── test_controlplane_e2e.py
+│   ├── test_evidence.py
+│   ├── test_factuality_gateway_integration.py
+│   ├── test_factuality_review_e2e.py
+│   ├── test_feedback.py
+│   ├── test_gateway.py
+│   ├── test_metrics_api.py
+│   ├── test_monitoring.py
+│   ├── test_observability.py
+│   ├── test_policy.py
+│   └── test_review_integration.py
+│
+├── requirements.txt
+└── README.md
 ```
 
 ---
 
 # Technology Stack
 
-The prototype uses:
+Layer Technology
 
-- Python
-- FastAPI
-- Uvicorn
-- Pydantic
-- HTTP-based LLM provider integration
-- Evidence retrieval
-- Web evidence retrieval
-- JSON/JSONL persistence
-- HTML/CSS/JavaScript dashboard
-- Pytest
+---
 
-The exact package versions are maintained in:
+Backend API FastAPI
+Application server Uvicorn
+Validation / models Pydantic
+Configuration pydantic-settings
+Factuality embeddings Sentence Transformers
+Numerical processing NumPy
+HTTP testing / API client HTTPX
+Testing Pytest
+Frontend HTML, CSS, JavaScript
+Deployment Render
+Source control Git + GitHub
+
+---
+
+# Dependencies
+
+The project's `requirements.txt` contains:
 
 ```text
-requirements.txt
+fastapi
+uvicorn
+pytest
+httpx
+pydantic
+pydantic-settings
+sentence-transformers
+numpy
 ```
 
+Install them with:
+
+```bash
+pip install -r requirements.txt
+```
+
+### Dependency roles
+
+- **FastAPI** --- REST API and application framework.
+- **Uvicorn** --- ASGI application server.
+- **Pydantic** --- request/data validation.
+- **pydantic-settings** --- environment-based configuration.
+- **Sentence Transformers** --- semantic embedding support for
+  factuality/evidence retrieval.
+- **NumPy** --- evidence index and numerical operations.
+- **HTTPX** --- HTTP/API testing.
+- **Pytest** --- automated testing.
+
 ---
 
-# Requirements
+# Configuration
 
-Before running the project, make sure you have:
+The application uses environment-backed settings.
 
-- Python 3.10+ recommended
-- pip
-- Internet access for external LLM/web evidence providers
-- An LLM provider API key
-- Tavily API key if web evidence retrieval is enabled
+Important configuration values include:
+
+```text
+APP_NAME
+ENVIRONMENT
+DEBUG
+
+MODEL_PROVIDER
+MODEL_NAME
+
+DEFAULT_RISK_THRESHOLD
+DEFAULT_COST_BUDGET
+
+API_HOST
+API_PORT
+
+FACTUALITY_ENABLED
+FACTUALITY_EMBEDDING_MODEL
+FACTUALITY_TOP_K
+FACTUALITY_MIN_SIMILARITY
+FACTUALITY_MAX_CLAIMS
+
+EVIDENCE_FILE
+EVIDENCE_INDEX_FILE
+
+HF_TOKEN
+```
+
+A local `.env` file can be used for development.
+
+### Example
+
+```env
+APP_NAME=ControlPlane.ai
+ENVIRONMENT=development
+DEBUG=true
+
+MODEL_PROVIDER=mock
+MODEL_NAME=mock-model
+
+DEFAULT_RISK_THRESHOLD=0.50
+DEFAULT_COST_BUDGET=0.01
+
+API_HOST=127.0.0.1
+API_PORT=8000
+
+FACTUALITY_ENABLED=true
+FACTUALITY_EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
+FACTUALITY_TOP_K=5
+FACTUALITY_MIN_SIMILARITY=0.55
+FACTUALITY_MAX_CLAIMS=20
+
+EVIDENCE_FILE=data/evidence.json
+EVIDENCE_INDEX_FILE=data/evidence_index.npz
+```
+
+For hosted deployments, secrets should be configured through the hosting
+provider's environment-variable system rather than committed to Git.
+
+**Never commit API keys, tokens, passwords, or private credentials to
+the public repository.**
 
 ---
 
-# Installation
+# Local Installation
 
 ## 1. Clone the repository
 
-Clone this repository to your machine and enter the project directory.
-
-Example:
-
-```powershell
-git clone <repository-url>
-cd ControlPlane_ai_final_prototype
+```bash
+git clone https://github.com/n-kaushik1/Controlplane_AI_project.git
+cd Controlplane_AI_project
 ```
 
 ## 2. Create a virtual environment
 
-Windows PowerShell:
+### Windows PowerShell
 
 ```powershell
 python -m venv .venv
+.venv\Scripts\Activate.ps1
 ```
 
-Activate it:
+### macOS / Linux
 
-```powershell
-.\.venv\Scripts\Activate.ps1
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
 ```
-
-If PowerShell blocks script execution, activate the environment using an appropriate Python/PowerShell configuration for your machine.
-
----
 
 ## 3. Install dependencies
 
-```powershell
+```bash
 pip install -r requirements.txt
 ```
 
----
+## 4. Configure environment variables
 
-# Environment Variables
-
-Create a local `.env` file in the project root.
-
-Use `.env_example` as the template:
+Create a local `.env` file if required:
 
 ```text
-.env_example
+.env
 ```
 
-Do not commit your real `.env` file.
-
-A typical setup contains the API credentials required by the configured model and evidence providers.
-
-For example:
-
-```env
-OPENROUTER_API_KEY=your_openrouter_key
-TAVILY_API_KEY=your_tavily_key
-```
-
-Use the variable names already defined by the project's `.env_example` and configuration code.
-
-### Important
-
-Never put real API keys in:
-
-- GitHub
-- README files
-- Python source files
-- JavaScript files
-- screenshots
-- test files
-
-The `.gitignore` should exclude `.env`.
-
----
-
-# Tavily API
-
-Tavily is used by the web evidence retrieval component when web-based evidence is required.
-
-If your configured workflow uses web evidence:
-
-1. Create a Tavily API key.
-2. Add it to your local `.env`.
-3. Keep the key private.
-4. Do not commit `.env`.
-
-The local evidence functionality can still be used through the project's evidence data and retrieval components where applicable.
+Add the required configuration values for your environment.
 
 ---
 
 # Running the Application
 
-From the project root, with the virtual environment activated:
+Start the FastAPI server with:
 
-```powershell
-uvicorn app.main:app --reload
+```bash
+uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-The FastAPI application will normally be available at:
+The API will be available at:
 
 ```text
 http://127.0.0.1:8000
@@ -525,533 +932,571 @@ FastAPI's interactive API documentation is available at:
 http://127.0.0.1:8000/docs
 ```
 
+The deployed application serves the ControlPlane.ai dashboard from the
+same web service.
+
 ---
 
-# Running the Dashboard
+# Using the API
 
-The dashboard is located under:
+## Health Check
+
+```http
+GET /api/health
+```
+
+Example:
+
+```bash
+curl http://127.0.0.1:8000/api/health
+```
+
+The health response reports service health and whether the major
+governance components are enabled.
+
+---
+
+## Generate a Governed Response
+
+```http
+POST /api/generate
+```
+
+Example request:
+
+```json
+{
+  "prompt": "Explain the customer support policy.",
+  "metadata": {
+    "risk_profile": "customer_support"
+  }
+}
+```
+
+Example curl:
+
+```bash
+curl -X POST "http://127.0.0.1:8000/api/generate" \
+  -H "Content-Type: application/json" \
+  -d "{\"prompt\":\"Explain the customer support policy.\"}"
+```
+
+The response contains the governed model result and associated
+governance information.
+
+---
+
+# Human Review API
+
+## List Pending Reviews
+
+```http
+GET /api/reviews
+```
+
+## Get a Review
+
+```http
+GET /api/reviews/{review_id}
+```
+
+## Resolve a Review
+
+```http
+POST /api/reviews/{review_id}/resolve
+```
+
+Example request:
+
+```json
+{
+  "final_decision": "ALLOW",
+  "reviewer": "admin",
+  "comment": "Reviewed and approved."
+}
+```
+
+The review workflow also supports final outcomes such as `BLOCK`,
+`EDIT`, and `REJECT` according to the review implementation.
+
+---
+
+# Feedback API
+
+```http
+GET /api/feedback/summary
+```
+
+This exposes aggregated feedback information from resolved reviews.
+
+---
+
+# Metrics API
+
+The monitoring API is divided into focused endpoints.
+
+### Overall metrics
+
+```http
+GET /api/metrics
+```
+
+### Dashboard summary
+
+```http
+GET /api/metrics/dashboard
+```
+
+### Recent events
+
+```http
+GET /api/metrics/events
+```
+
+### Decisions
+
+```http
+GET /api/metrics/decisions
+```
+
+### Risk
+
+```http
+GET /api/metrics/risk
+```
+
+### Performance
+
+```http
+GET /api/metrics/performance
+```
+
+### Cost
+
+```http
+GET /api/metrics/cost
+```
+
+### Reviews
+
+```http
+GET /api/metrics/reviews
+```
+
+---
+
+# Observability API
+
+Additional observability endpoints are available:
 
 ```text
-dashboard/
+GET /api/observability
+GET /api/observability/metrics
+GET /api/observability/events
+GET /api/observability/health
 ```
-
-The dashboard consists of:
-
-```text
-dashboard/index.html
-dashboard/app.js
-dashboard/style.css
-```
-
-The dashboard communicates with the backend API.
-
-Start the backend first:
-
-```powershell
-uvicorn app.main:app --reload
-```
-
-Then open the dashboard using the project's configured frontend serving method.
-
-If opening the HTML file directly does not work correctly because of browser/API restrictions, serve the dashboard directory using a simple local HTTP server.
 
 For example:
 
-```powershell
-python -m http.server 5500 --directory dashboard
-```
-
-Then open:
-
-```text
-http://127.0.0.1:5500
+```bash
+curl "http://127.0.0.1:8000/api/observability/health"
 ```
 
 ---
 
-# Running Tests
+# Dashboard
 
-The project includes a comprehensive automated test suite.
-
-Run all tests:
-
-```powershell
-python -m pytest -q
-```
-
-The current validated project state contains:
+The frontend is contained in:
 
 ```text
-104 passed, 1 warning
+dashboard/
+├── index.html
+├── app.js
+└── style.css
 ```
 
-The warning is related to the Starlette/httpx test-client compatibility message and does not represent a failing project test.
+The dashboard provides an operational view of the governance system.
+
+It is organized around areas such as:
+
+- Overview
+- Requests
+- Governance
+- Factuality
+- Human Reviews
+- Audit Log
+- Metrics
+
+The dashboard can display request volume, decisions, risk, review state,
+factuality information, and other observability signals exposed by the
+API.
+
+For the hosted prototype, the dashboard and FastAPI backend are served
+from the same Render web service.
 
 ---
 
-# Important Test Areas
+# Testing
 
-The repository contains tests covering areas including:
+The project includes unit, integration, and end-to-end tests.
+
+Run the full suite with:
+
+```bash
+pytest -q
+```
+
+Test coverage is organized around:
 
 ```text
-tests/test_actions.py
+tests/test_gateway.py
 tests/test_agents.py
-tests/test_audit.py
+tests/test_policy.py
 tests/test_context.py
-tests/test_controlplane_e2e.py
 tests/test_evidence.py
 tests/test_factuality_gateway_integration.py
 tests/test_factuality_review_e2e.py
-tests/test_feedback.py
-tests/test_gateway.py
-tests/test_metrics_api.py
-tests/test_monitoring.py
-tests/test_observability.py
-tests/test_policy.py
 tests/test_review_integration.py
+tests/test_feedback.py
+tests/test_audit.py
+tests/test_actions.py
+tests/test_monitoring.py
+tests/test_metrics_api.py
+tests/test_observability.py
+tests/test_controlplane_e2e.py
 ```
 
-These tests cover the main governance, evidence, factuality, policy, review, monitoring, and end-to-end behavior of the prototype.
+The tests validate different layers of the implementation, including:
+
+- Gateway behavior
+- Governance agents
+- Policy evaluation
+- Context handling
+- Evidence retrieval and verification
+- Factuality integration
+- Human-review integration
+- Feedback persistence
+- Audit logging
+- Monitoring
+- Metrics APIs
+- Observability
+- End-to-end request flow
 
 ---
 
-# Example Governance Scenarios
+# Deployment
 
-The system is designed to distinguish between different types of requests and responses.
+The public prototype is deployed using Render.
 
-## Low-risk request
+## Render Web Service
 
-Example:
-
-```text
-What is the capital of India?
-```
-
-A normal request can pass request governance and continue to model invocation, subject to response governance and factuality verification.
-
----
-
-## Request requiring review
-
-A request that crosses a configured review threshold can produce:
+Recommended configuration:
 
 ```text
-REVIEW
+Language:
+Python 3
+
+Branch:
+main
+
+Build Command:
+pip install -r requirements.txt
+
+Start Command:
+uvicorn app.main:app --host 0.0.0.0 --port $PORT
 ```
 
-and enter the human-review workflow.
-
----
-
-## High-risk request
-
-A request that violates a blocking condition or exceeds a critical threshold can produce:
+The service is currently available at:
 
 ```text
-BLOCK
+https://controlplane-ai-bhn7.onrender.com
 ```
 
-without allowing unsafe processing to continue.
+### Environment Variables
 
----
+Configure deployment secrets and model settings in Render's
+environment-variable section.
 
-## Factuality failure
-
-A model response containing an unsupported or insufficiently verified claim can trigger response governance.
-
-Depending on the active policy, the response may be:
+Typical variables may include:
 
 ```text
-ALLOW
+MODEL_PROVIDER
+MODEL_NAME
+MODEL_API_KEY
+MODEL_BASE_URL
+MODEL_TEMPERATURE
+MODEL_MAX_TOKENS
+MODEL_TIMEOUT_SECONDS
+TAVILY_API_KEY
+HF_TOKEN
 ```
+
+Only variables actually required by the selected runtime configuration
+should be populated.
+
+### Deployment Flow
 
 ```text
-REVIEW
-```
-
-or
-
-```text
-BLOCK
-```
-
----
-
-# Risk Profile Examples
-
-The policy engine can be inspected directly from Python.
-
-Example:
-
-```python
-from app.policies.engine import PolicyEngine
-
-result = PolicyEngine("customer_support").evaluate(
-    [{"agent": "bias", "risk": 0.40, "status": "PASS"}],
-    verification_status="VERIFIED",
-)
-
-print(result)
-```
-
-For a stricter profile:
-
-```python
-from app.policies.engine import PolicyEngine
-
-result = PolicyEngine("regulated_decision").evaluate(
-    [{"agent": "bias", "risk": 0.40, "status": "PASS"}],
-    verification_status="VERIFIED",
-)
-
-print(result)
-```
-
-The regulated profile intentionally applies stricter governance thresholds and may require review for situations that are allowed by less restrictive profiles.
-
----
-
-# API and Backend Components
-
-The primary backend entry points are:
-
-```text
-app/main.py
-app/api/routes.py
-```
-
-The gateway layer coordinates the request lifecycle:
-
-```text
-app/gateway/request_gateway.py
-app/gateway/model_gateway.py
-app/gateway/review_gateway.py
-```
-
-Governance agents are coordinated through:
-
-```text
-app/agents/orchestrator.py
-```
-
-Policy decisions are handled through:
-
-```text
-app/policies/engine.py
+GitHub
+   |
+   | push to main
+   v
+Render Auto Deploy
+   |
+   v
+Install Python dependencies
+   |
+   v
+Start Uvicorn
+   |
+   v
+FastAPI Application
+   |
+   +------------------+
+   |                  |
+   v                  v
+REST API          Dashboard
 ```
 
 ---
 
-# Data and Evidence
+# Design Decisions
 
-The repository contains the project's local evidence resources:
+## Modular Governance
+
+Governance checks are implemented as independent agents.
+
+This allows new governance dimensions to be added without rewriting the
+core request gateway.
+
+## Standardized Agent Results
+
+Agents expose standardized results so the orchestrator and gateway do
+not need to depend on agent-specific implementation details.
+
+## Gateway-Based Enforcement
+
+Governance happens at the gateway rather than only in the UI.
+
+This means decisions can be enforced consistently for API requests even
+when a request does not originate from the dashboard.
+
+## Pre- and Post-Generation Checks
+
+Both the input and generated response are governed.
+
+This prevents the system from assuming that a safe input necessarily
+produces a safe output.
+
+## Separate Human Review Layer
+
+Human review is integrated around the gateway through
+`ReviewAwareGateway`.
+
+This preserves the core request-gateway behavior while adding escalation
+and feedback workflows.
+
+## Request ID Propagation
+
+The request ID is preserved across the request, governance result,
+review, feedback, and audit flow.
+
+This makes cross-component tracing possible.
+
+## Provider Abstraction
+
+The model provider is separated behind a provider interface.
+
+The project currently includes:
 
 ```text
-data/evidence.json
-data/evidence_index.npz
+ModelProvider
+MockModelProvider
+OpenAICompatibleProvider
 ```
 
-These support the evidence retrieval and factuality workflow.
+The provider abstraction allows governance logic to remain independent
+of a specific model vendor.
 
-If the application generates additional runtime data, logs, or caches during execution, those should be treated separately from the static project evidence.
+## Lightweight Prototype Architecture
+
+The prototype intentionally avoids introducing unnecessary
+infrastructure such as a separate database, message broker, or
+orchestration platform.
+
+This keeps the demonstration easy to run while preserving clear
+architectural boundaries for future productionization.
 
 ---
 
-# Audit and Runtime Files
+# Limitations and Prototype Scope
 
-The application may create runtime files such as:
+ControlPlane.ai is a prototype and should not be treated as a
+production-ready enterprise governance platform without additional
+hardening.
+
+Current prototype considerations include:
+
+### In-memory runtime state
+
+Some monitoring and review state is maintained in application memory. A
+production deployment would require durable storage.
+
+### Local JSONL logs
+
+Audit and feedback persistence currently use local files such as:
 
 ```text
 logs/audit.jsonl
 logs/feedback.jsonl
 ```
 
-These files can become large because they contain runtime activity.
+A production system should use durable, access-controlled storage.
 
-For a public repository, generated runtime logs should not normally be committed.
+### Model-provider configuration
 
-The source code and configuration required to generate logs should be committed instead.
+The provider abstraction supports OpenAI-compatible integrations, while
+the current route wiring includes a mock provider for predictable
+development/testing behavior.
 
----
+### Factuality limitations
 
-# Security Considerations
+Factuality verification depends on the available evidence and retrieval
+quality. A verification signal should not automatically be interpreted
+as proof of universal truth.
 
-This prototype is intended for demonstration and evaluation.
+### Security hardening
 
-Before deploying it in a production environment, additional security controls would be required.
+A production deployment would require authentication, authorization,
+rate limiting, secret management, network controls, and more extensive
+security testing.
 
-Important considerations include:
+### Scalability
 
-- Secure secret management
-- Authentication
-- Authorization
-- Rate limiting
-- Provider failure handling
-- Production database storage
-- Encryption
-- Secure audit-log storage
-- Access control for human reviewers
-- Stronger threat modeling
-- Provider-specific reliability handling
-- Monitoring and alerting
-- Production-grade observability
-- Data retention policies
-- Privacy and compliance review
-
-The governance layer should not itself be considered a guarantee that every possible unsafe or incorrect model output will be detected.
+The prototype is designed to demonstrate the architecture and governance
+workflow rather than high-throughput distributed execution.
 
 ---
 
-# Project Limitations
+# Future Improvements
 
-This repository represents a prototype.
+Potential next steps include:
 
-Some components are intentionally simplified for demonstration purposes.
-
-In particular:
-
-- Governance agents use configurable rule/risk logic.
-- Factuality depends on the available evidence and retrieval quality.
-- Web evidence depends on external services.
-- LLM availability depends on the configured provider.
-- Human review is implemented as a prototype workflow rather than a complete enterprise review platform.
-- Runtime persistence is lightweight and can be replaced with production databases.
-- Production authentication and authorization are outside the prototype scope.
-
----
-
-# Design Philosophy
-
-The main design principle is:
-
-> **AI generation should be surrounded by explicit governance controls rather than treated as an uncontrolled model call.**
-
-The prototype separates:
-
-1. Request governance
-2. Policy evaluation
-3. Model invocation
-4. Response governance
-5. Factuality verification
-6. Human review
-7. Audit logging
-8. Monitoring
-9. Feedback
-
-This separation makes the system easier to test, inspect, and extend.
-
----
-
-# End-to-End Lifecycle
-
-A complete request can follow this lifecycle:
-
-```text
-1. User submits prompt
-        |
-2. Request context created
-        |
-3. Request governance agents execute
-        |
-4. Request policy evaluated
-        |
-5. BLOCK / REVIEW / ALLOW
-        |
-        +---- BLOCK
-        |
-        +---- REVIEW -> human review
-        |
-        +---- ALLOW
-                |
-6. LLM invocation
-                |
-7. Model response received
-                |
-8. Response governance agents execute
-                |
-9. Factuality / evidence verification
-                |
-10. Response policy evaluated
-                |
-11. BLOCK / REVIEW / ALLOW
-                |
-12. Final response or review workflow
-                |
-13. Audit event recorded
-                |
-14. Metrics / monitoring updated
-```
-
----
-
-# Repository Structure
-
-```text
-.
-├── app/
-│   ├── actions/
-│   ├── agents/
-│   ├── api/
-│   ├── audit/
-│   ├── context/
-│   ├── core/
-│   ├── evidence/
-│   ├── feedback/
-│   ├── gateway/
-│   ├── models/
-│   ├── monitoring/
-│   ├── policies/
-│   └── main.py
-│
-├── dashboard/
-│   ├── app.js
-│   ├── index.html
-│   └── style.css
-│
-├── data/
-│   ├── evidence.json
-│   └── evidence_index.npz
-│
-├── tests/
-│   └── test_*.py
-│
-├── .env_example
-├── .gitignore
-├── requirements.txt
-└── README.md
-```
-
----
-
-# Quick Start
-
-For someone evaluating the repository, the shortest path is:
-
-```powershell
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-```
-
-Create `.env` from `.env_example` and configure the required provider keys.
-
-Then run:
-
-```powershell
-uvicorn app.main:app --reload
-```
-
-Open:
-
-```text
-http://127.0.0.1:8000/docs
-```
-
-Run the tests:
-
-```powershell
-python -m pytest -q
-```
-
-Then launch/open the dashboard from:
-
-```text
-dashboard/
-```
-
----
-
-# Prototype Validation
-
-The current prototype has been validated with the automated test suite:
-
-```text
-104 passed, 1 warning
-```
-
-End-to-end factuality and governance behavior has also been exercised through the project's test suite and UI workflows.
-
-The prototype has been tested across different governance profiles and scenarios involving:
-
-- Normal requests
-- Governance checks
-- Policy decisions
-- Factuality
-- Human review
-- Risk-profile differences
-- ALLOW / REVIEW / BLOCK outcomes
-
----
-
-# Future Extensions
-
-Potential future improvements include:
-
-- Persistent production database
-- Enterprise identity and access management
-- More sophisticated policy authoring
+- Persistent database-backed review queues
+- Durable audit storage
+- Role-based access control
+- Authentication and SSO
+- Organization / tenant isolation
+- More model-provider adapters
+- Streaming response governance
+- Advanced policy authoring
 - Policy versioning
-- Model/provider routing
-- Advanced factuality scoring
-- More evidence sources
-- Automated policy regression testing
-- Reviewer assignment and escalation
-- Compliance reporting
-- Governance analytics
-- Distributed monitoring
-- Production-grade secrets management
-- More advanced anomaly detection
-- Model-specific risk calibration
+- Governance rule explainability
+- Stronger factuality evaluation
+- External knowledge-base connectors
+- Continuous model and policy monitoring
+- Alerting and incident workflows
+- Production-grade observability
+- Distributed execution
+- Queue-based asynchronous governance
+- Dashboard authentication
+- Exportable compliance reports
+- Governance analytics over historical requests
+- Automated regression evaluation for governance policies
+
+---
+
+# Public Links
+
+---
+
+Resource Link
+
+---
+
+GitHub Repository https://github.com/n-kaushik1/Controlplane_AI_project
+
+Live Prototype https://controlplane-ai-bhn7.onrender.com
+
+Prototype Demo Video DEMO_VIDEO_URL
+
+---
 
 ---
 
 # License
 
-Add the license appropriate for the intended distribution of this repository.
+This project is licensed under the **MIT License**.
 
-If this is an academic or prototype submission, the repository owner should specify the applicable project/submission terms.
+The MIT License permits use, modification, distribution, and
+private/commercial use subject to the conditions of the license.
+
+A standard `LICENSE` file containing the full MIT License text should be
+present at the repository root:
+
+```text
+LICENSE
+```
+
+If it has not yet been committed, add the MIT license file through
+GitHub's license template or create a standard MIT `LICENSE` file before
+final submission.
 
 ---
 
-# Summary
+# Acknowledgements
 
-ControlPlane AI demonstrates a governance-first architecture for LLM applications.
+ControlPlane.ai is built as a prototype demonstrating the integration of
+AI governance, factuality verification, human oversight, auditability,
+and operational observability around an LLM application.
 
-Instead of:
+The architecture emphasizes a practical principle:
 
-```text
-User -> LLM -> Answer
+> **AI systems should be governed as runtime systems, not only evaluated
+> after deployment.**
+
+---
+
+## Quick Start
+
+For the shortest path from clone to running application:
+
+```bash
+git clone https://github.com/n-kaushik1/Controlplane_AI_project.git
+cd Controlplane_AI_project
+
+python -m venv .venv
+
+# Windows PowerShell
+.venv\Scripts\Activate.ps1
+
+# macOS/Linux
+# source .venv/bin/activate
+
+pip install -r requirements.txt
+
+uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-the prototype introduces a controlled lifecycle:
+Then open:
 
 ```text
-User
-  |
-  v
-Request Governance
-  |
-  v
-Policy Engine
-  |
-  v
-LLM
-  |
-  v
-Response Governance
-  |
-  v
-Factuality / Evidence
-  |
-  v
-Policy Engine
-  |
-  +--> ALLOW
-  +--> REVIEW
-  +--> BLOCK
-  |
-  v
-Audit + Monitoring
+http://127.0.0.1:8000
 ```
 
-This provides a foundation for building AI applications where **risk, factuality, privacy, security, human oversight, policy enforcement, and auditability are explicit parts of the system rather than afterthoughts.**
+or:
+
+```text
+http://127.0.0.1:8000/docs
+```
+
+For the deployed prototype:
+
+```text
+https://controlplane-ai-bhn7.onrender.com
+```
+
+---
+
+**ControlPlane.ai --- Governance before, during, and after AI
+generation.**
