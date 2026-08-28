@@ -1,9 +1,25 @@
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.api.routes import router
 from app.core.config import settings
 
+
+# =========================================================
+# PATHS
+# =========================================================
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+DASHBOARD_DIR = BASE_DIR / "dashboard"
+
+
+# =========================================================
+# FASTAPI APPLICATION
+# =========================================================
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -16,7 +32,7 @@ app = FastAPI(
 
 
 # =========================================================
-# CORS — CONTROLPLANE DASHBOARD
+# CORS
 # =========================================================
 
 app.add_middleware(
@@ -39,14 +55,45 @@ app.include_router(router)
 
 
 # =========================================================
-# ROOT
+# DASHBOARD STATIC FILES
 # =========================================================
 
-@app.get("/")
+if DASHBOARD_DIR.exists():
+
+    app.mount(
+        "/dashboard",
+        StaticFiles(directory=str(DASHBOARD_DIR)),
+        name="dashboard",
+    )
+
+
+# =========================================================
+# ROOT — SERVE DASHBOARD
+# =========================================================
+
+@app.get("/", include_in_schema=False)
 def root():
+
+    dashboard_index = DASHBOARD_DIR / "index.html"
+
+    if dashboard_index.exists():
+        return FileResponse(dashboard_index)
 
     return {
         "service": settings.APP_NAME,
         "version": "4.0.0",
-        "status": "running"
+        "status": "running",
+        "error": "Dashboard files not found",
+    }
+
+
+# =========================================================
+# HEALTH CHECK
+# =========================================================
+
+@app.get("/healthz", include_in_schema=False)
+def healthz():
+
+    return {
+        "status": "healthy"
     }

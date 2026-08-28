@@ -25,7 +25,7 @@
    CONFIGURATION
    ============================================================ */
 
-const API_BASE = "http://127.0.0.1:8000/api";
+const API_BASE = "/api";
 
 const REFRESH_INTERVAL = 15000;
 
