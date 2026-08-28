@@ -9,7 +9,7 @@ ControlPlane introduces policy-driven checks before and after model
 execution and records the resulting decisions, risks, costs, evidence,
 reviews, and operational metrics.
 
-**Live prototype:** https://controlplane-ai-bhn7.onrender.com\
+**Live prototype:** [ControlPlane_AI](https://controlplane-ai-bhn7.onrender.com)
 **Public repository:**
 [ControlPlane_AI](https://github.com/n-kaushik1/Controlplane_AI_project.git)
 **License:** MIT
