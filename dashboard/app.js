@@ -25,7 +25,7 @@
    CONFIGURATION
    ============================================================ */
 
-const API_BASE = "/api";
+const API_BASE = "http://127.0.0.1:8000/api";
 
 const REFRESH_INTERVAL = 15000;
 
@@ -933,6 +933,21 @@ function injectDashboardStyles() {
 
 
         /* ================================================
+           HOW IT WORKS INTERACTION
+           ================================================ */
+
+        .cp-architecture-focus {
+
+            transform:
+                translateY(-2px);
+
+            box-shadow:
+                0 12px 35px
+                rgba(108,99,255,0.10);
+        }
+
+
+        /* ================================================
            RESPONSIVE
            ================================================ */
 
@@ -1115,6 +1130,116 @@ function initializeNavigation() {
                 }
             );
         }
+    );
+}
+
+
+/* ============================================================
+   HOW CONTROLPLANE WORKS
+   ============================================================
+
+   The current dashboard already contains a dedicated
+   "How It Works" page in index.html.
+
+   This initializer is intentionally additive: it does not
+   replace the existing architecture markup, navigation,
+   generate flow, governance logic, factuality logic, review
+   workflow, metrics, audit log, or auto-refresh behavior.
+
+   It simply makes the architecture page robust when the
+   dashboard is loaded from a slightly older HTML file and
+   adds lightweight interaction to the existing flow cards.
+   ============================================================ */
+
+function initializeHowItWorks() {
+
+    const page =
+        $("page-how-it-works");
+
+
+    if (!page) {
+
+        console.log(
+            "[ControlPlane] How It Works page not present in current HTML."
+        );
+
+        return;
+    }
+
+
+    if (
+        page.dataset.cpHowItWorksInitialized ===
+        "true"
+    ) {
+
+        return;
+    }
+
+
+    page.dataset.cpHowItWorksInitialized =
+        "true";
+
+
+    /*
+     * Add a small visual state to the architecture flow
+     * without changing any existing application behavior.
+     * Cards remain normal buttons/content and all existing
+     * data-page-target navigation continues to be handled by
+     * initializeNavigation().
+     */
+
+    const interactiveCards =
+        page.querySelectorAll(
+            ".flow-step, .agent-card, .decision-gate, .outcome-card"
+        );
+
+
+    interactiveCards.forEach(
+        card => {
+
+            card.addEventListener(
+                "mouseenter",
+                () => {
+                    card.classList.add(
+                        "cp-architecture-focus"
+                    );
+                }
+            );
+
+
+            card.addEventListener(
+                "mouseleave",
+                () => {
+                    card.classList.remove(
+                        "cp-architecture-focus"
+                    );
+                }
+            );
+        }
+    );
+
+
+    /*
+     * Keep the page title synchronized if the page is opened
+     * directly through an architecture navigation card.
+     */
+
+    const pageTitle =
+        $("page-title");
+
+
+    if (
+        pageTitle &&
+        !pageTitle.textContent.trim()
+    ) {
+
+        pageTitle.textContent =
+            "How It Works";
+    }
+
+
+    console.log(
+        "[ControlPlane] How It Works architecture initialized."
     );
 }
 
@@ -2479,8 +2604,7 @@ function renderReviews(data) {
 
 
                                 <div>
-                                    ${decisionBadge(
-                                        decision
+                                                 decision
                                     )}
                                 </div>
 
@@ -2776,45 +2900,6 @@ function renderReviews(data) {
 
 
                         /*
-                         * IMPORTANT:
-                         *
-                         * Capture the complete original review
-                         * BEFORE resolving it.
-                         *
-                         * The backend removes the item from
-                         * the pending review list after it has
-                         * been approved/rejected.
-                         */
-
-                        const currentReview =
-                            reviews.find(
-                                review =>
-                                    String(
-                                        review.review_id ||
-                                        review.id ||
-                                        ""
-                                    ) ===
-                                    String(
-                                        reviewId
-                                    )
-                            );
-
-
-                        const originalRequestId =
-                            currentReview?.request_id ||
-                            currentReview?.metadata?.request_id ||
-                            null;
-
-
-                        const originalResponse =
-                            currentReview?.model_response ||
-                            currentReview?.response ||
-                            currentReview?.output ||
-                            currentReview?.raw_output ||
-                            null;
-
-
-                        /*
                          * Disable both actions while
                          * the resolution is submitted.
                          */
@@ -2861,232 +2946,56 @@ function renderReviews(data) {
 
                         try {
 
-                            const resolved =
-                                await apiFetch(
-                                    `/reviews/${encodeURIComponent(
-                                        reviewId
-                                    )}/resolve`,
-                                    {
-                                        method: "POST",
-
-                                        body:
-                                            JSON.stringify(
-                                                {
-                                                    final_decision:
-                                                        finalDecision,
-
-                                                    reviewer:
-                                                        reviewer,
-
-                                                    comment:
-                                                        `Human review resolved as ${finalDecision}.`
-                                                }
-                                            )
-                                    }
-                                );
-
-
-                            /*
-                             * Extract anything returned by
-                             * the backend without depending
-                             * on one exact response shape.
-                             */
-
-                            const resolvedReview =
-                                resolved?.review ||
-                                resolved?.data ||
-                                resolved ||
-                                {};
-
-
-                            const resolvedRequestId =
-                                resolvedReview?.request_id ||
-                                resolvedReview?.metadata?.request_id ||
-                                originalRequestId ||
-                                null;
-
-
-                            const resolvedResponse =
-                                resolvedReview?.model_response ||
-                                resolvedReview?.response ||
-                                resolvedReview?.output ||
-                                resolvedReview?.raw_output ||
-                                originalResponse ||
-                                null;
-
-
-                            /*
-                             * APPROVE
-                             *
-                             * Human approval means the
-                             * original model response is
-                             * now allowed to be displayed.
-                             */
-
-                            if (
-                                finalDecision ===
-                                "ALLOW"
-                            ) {
-
-                                if (
-                                    resolvedResponse
-                                ) {
-
-                                    setText(
-                                        "response-output",
-                                        resolvedResponse
-                                    );
-                                }
-
-
-                                /*
-                                 * The response has passed
-                                 * human review, therefore the
-                                 * dashboard decision should
-                                 * show ALLOW.
-                                 */
-
-                                setText(
-                                    "decision-output",
-                                    "ALLOW"
-                                );
-
-
-                                /*
-                                 * Preserve the request ID
-                                 * associated with the approved
-                                 * response.
-                                 */
-
-                                if (
-                                    resolvedRequestId
-                                ) {
-
-                                    lastGeneratedRequestId =
-                                        resolvedRequestId;
-
-
-                                    setText(
-                                        "request-id-output",
-                                        resolvedRequestId
-                                    );
-
-
-                                    renderGeneratedRequestId(
-                                        resolvedRequestId
-                                    );
-                                }
-                            }
-
-
-                            /*
-                             * REJECT
-                             *
-                             * Keep the existing governance
-                             * behaviour. The response is not
-                             * restored as an approved response.
-                             */
-
-                            if (
-                                finalDecision ===
-                                "REJECT"
-                            ) {
-
-                                /*
-                                 * Do not overwrite the
-                                 * existing dashboard response.
-                                 *
-                                 * The backend remains the
-                                 * source of truth for the
-                                 * final rejected decision.
-                                 */
-
-                                console.log(
-                                    "[ControlPlane] Response rejected by human review:",
+                            await apiFetch(
+                                `/reviews/${encodeURIComponent(
                                     reviewId
-                                );
-                            }
+                                )}/resolve`,
+                                {
+                                    method: "POST",
+
+                                    body: JSON.stringify(
+                                        {
+                                            final_decision:
+                                                finalDecision,
+
+                                            reviewer:
+                                                reviewer,
+
+                                            comment:
+                                                `Human review resolved as ${finalDecision}.`
+                                        }
+                                    )
+                                }
+                            );
 
 
                             /*
-                             * Existing functionality:
-                             *
-                             * Reload pending reviews,
-                             * metrics and events.
+                             * Reload reviews immediately.
                              */
 
                             await loadReviews();
 
 
+                            /*
+                             * Refresh metrics so the
+                             * dashboard reflects the
+                             * resolution.
+                             */
+
                             await loadMetrics();
 
+
+                            /*
+                             * Refresh events/audit data.
+                             */
 
                             await loadEvents();
 
 
-                            /*
-                             * IMPORTANT:
-                             *
-                             * loadReviews(), loadMetrics() and
-                             * loadEvents() refresh the dashboard
-                             * data. They must not cause an approved
-                             * model response to disappear.
-                             *
-                             * Therefore restore the response
-                             * one final time AFTER the refresh.
-                             */
-
-                            if (
-                                finalDecision ===
-                                "ALLOW" &&
-                                resolvedResponse
-                            ) {
-
-                                setText(
-                                    "response-output",
-                                    resolvedResponse
-                                );
-
-
-                                setText(
-                                    "decision-output",
-                                    "ALLOW"
-                                );
-
-
-                                if (
-                                    resolvedRequestId
-                                ) {
-
-                                    lastGeneratedRequestId =
-                                        resolvedRequestId;
-
-
-                                    setText(
-                                        "request-id-output",
-                                        resolvedRequestId
-                                    );
-
-
-                                    renderGeneratedRequestId(
-                                        resolvedRequestId
-                                    );
-                                }
-                            }
-
-
                             console.log(
                                 "[ControlPlane] Review resolved:",
-                                {
-                                    reviewId:
-                                        reviewId,
-
-                                    requestId:
-                                        resolvedRequestId,
-
-                                    finalDecision:
-                                        finalDecision
-                                }
+                                reviewId,
+                                finalDecision
                             );
 
 
@@ -4235,82 +4144,6 @@ function initializeGenerateForm() {
 
 
     /*
-     * Risk profile selector.
-     *
-     * This is optional so the existing generate
-     * functionality continues to work even if
-     * the selector is unavailable.
-     */
-
-    const riskProfileSelect =
-        $("risk-profile");
-
-
-    const riskProfileDescription =
-        $("risk-profile-description");
-
-
-    const riskProfileDescriptions = {
-
-        customer_support:
-            "Balanced controls for customer-facing AI.",
-
-        internal_copilot:
-            "Stronger grounding and enterprise data protection.",
-
-        regulated_decision:
-            "Strictest controls for high-impact decision support."
-    };
-
-
-    function updateRiskProfileDescription() {
-
-        if (
-            !riskProfileSelect ||
-            !riskProfileDescription
-        ) {
-
-            return;
-        }
-
-
-        const selectedProfile =
-            riskProfileSelect.value;
-
-
-        riskProfileDescription.textContent =
-            riskProfileDescriptions[
-                selectedProfile
-            ] ||
-            "Configured governance profile.";
-    }
-
-
-    if (riskProfileSelect) {
-
-        updateRiskProfileDescription();
-
-
-        if (
-            riskProfileSelect.dataset
-                .cpDescriptionInitialized !==
-            "true"
-        ) {
-
-            riskProfileSelect.dataset
-                .cpDescriptionInitialized =
-                "true";
-
-
-            riskProfileSelect.addEventListener(
-                "change",
-                updateRiskProfileDescription
-            );
-        }
-    }
-
-
-    /*
      * Prevent duplicate initialization.
      */
 
@@ -4344,10 +4177,6 @@ function initializeGenerateForm() {
                 );
 
 
-            /*
-             * Preserve existing behavior.
-             */
-
             if (submitButton) {
 
                 submitButton.disabled =
@@ -4361,31 +4190,9 @@ function initializeGenerateForm() {
 
             try {
 
-                /*
-                 * Build metadata only when the
-                 * profile selector exists.
-                 *
-                 * This preserves compatibility
-                 * with the existing API.
-                 */
-
-                let metadata = null;
-
-
-                if (riskProfileSelect) {
-
-                    metadata = {
-
-                        risk_profile:
-                            riskProfileSelect.value
-                    };
-                }
-
-
                 const result =
                     await generateRequest(
-                        prompt,
-                        metadata
+                        prompt
                     );
 
 
@@ -4936,6 +4743,8 @@ async function initializeDashboard() {
 
     initializeEmptyState();
 
+    initializeHowItWorks();
+
     initializeNavigation();
 
     initializeRefreshButton();
@@ -5022,3 +4831,4 @@ window.ControlPlaneDashboard = {
     stopAutoRefresh:
         stopAutoRefresh
 };
+                           

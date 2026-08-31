@@ -9,9 +9,9 @@ ControlPlane introduces policy-driven checks before and after model
 execution and records the resulting decisions, risks, costs, evidence,
 reviews, and operational metrics.
 
-**Live prototype:** https://controlplane-ai-bhn7.onrender.com\
+**Live prototype:** [ControlPlane_AI](https://controlplane-ai-bhn7.onrender.com)
 **Public repository:**
-https://github.com/n-kaushik1/Controlplane_AI_project\
+[ControlPlane_AI](https://github.com/n-kaushik1/Controlplane_AI_project.git)
 **License:** MIT
 
 ---
@@ -20,24 +20,7 @@ https://github.com/n-kaushik1/Controlplane_AI_project\
 
 ### 🎥 Demo Video
 
-**[▶ Watch the ControlPlane.ai Prototype Demo](DEMO_VIDEO_URL)**
-
-> **Submission note:** Replace `DEMO_VIDEO_URL` above with the public
-> YouTube, Google Drive, Loom, or other shareable URL for the final
-> prototype demonstration video.
-
-The demo should ideally cover:
-
-1.  Opening the deployed ControlPlane.ai dashboard.
-2.  Submitting a prompt through **Test AI Response**.
-3.  Showing the governance decision and risk information.
-4.  Showing factuality/evidence information when applicable.
-5.  Demonstrating the **Human Reviews** workflow for a request requiring
-    review.
-6.  Resolving a review and showing the resulting decision.
-7.  Showing **Audit Log**, **Metrics**, and observability information.
-
----
+**[▶ Watch the ControlPlane.ai Prototype Demo](https://drive.google.com/file/d/17j1ylfG507OqPwjgSTJWkZZlegKaGf30/view?usp=sharing)**
 
 ## Table of Contents
 
@@ -833,7 +816,7 @@ EVIDENCE_INDEX_FILE
 HF_TOKEN
 ```
 
-A local `.env` file can be used for development.
+A local `.env` file must be used for development.
 
 ### Example
 
@@ -908,7 +891,15 @@ Create a local `.env` file if required:
 .env
 ```
 
-Add the required configuration values for your environment.
+Add the required configuration values for your environment.:
+MODEL_PROVIDER="openrouter"
+MODEL_NAME="openrouter/free"
+MODEL_BASE_URL="https://openrouter.ai/api/v1"
+MODEL_TEMPERATURE="0.2"
+MODEL_MAX_TOKENS="512"
+MODEL_TIMEOUT_SECONDS="60"
+MODEL_API_KEY=your_real_openrouter_key
+TAVILY_API_KEY=your_real_tavily_key
 
 ---
 
@@ -1476,6 +1467,19 @@ python -m venv .venv
 pip install -r requirements.txt
 
 uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+```
+
+Also make .env file with following:
+
+```text
+MODEL_PROVIDER="openrouter"
+MODEL_NAME="openrouter/free"
+MODEL_BASE_URL="https://openrouter.ai/api/v1"
+MODEL_TEMPERATURE="0.2"
+MODEL_MAX_TOKENS="512"
+MODEL_TIMEOUT_SECONDS="60"
+MODEL_API_KEY=your_real_openrouter_key
+TAVILY_API_KEY=your_real_tavily_key
 ```
 
 Then open:

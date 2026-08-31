@@ -60,6 +60,15 @@
 
             <button
                 class="nav-item"
+                data-page="how-it-works"
+            >
+                <span class="nav-icon">✦</span>
+                <span>How It Works</span>
+            </button>
+
+
+            <button
+                class="nav-item"
                 data-page="requests"
             >
                 <span class="nav-icon">⇄</span>
@@ -424,85 +433,6 @@
                                     outline:none;
                                 "
                             ></textarea>
-
-                        </div>
-
-
-                        <!-- GOVERNANCE PROFILE
-                             Added without changing the existing
-                             page structure or existing form controls. -->
-
-                        <div
-                            style="
-                                margin-bottom:16px;
-                            "
-                        >
-
-                            <label
-                                for="risk-profile"
-                                style="
-                                    display:block;
-                                    margin-bottom:8px;
-                                    color:#9aa7bd;
-                                    font-size:12px;
-                                    font-weight:700;
-                                    letter-spacing:.08em;
-                                    text-transform:uppercase;
-                                "
-                            >
-                                Governance Profile
-                            </label>
-
-
-                            <select
-                                id="risk-profile"
-                                name="risk_profile"
-                                style="
-                                    width:100%;
-                                    padding:13px 14px;
-                                    border:1px solid rgba(148,163,184,.18);
-                                    border-radius:10px;
-                                    background:#0b101b;
-                                    color:#e8edf7;
-                                    font:inherit;
-                                    outline:none;
-                                    cursor:pointer;
-                                "
-                            >
-
-                                <option
-                                    value="customer_support"
-                                >
-                                    Customer Support — Balanced safety & latency
-                                </option>
-
-                                <option
-                                    value="internal_copilot"
-                                >
-                                    Internal Copilot — Strong data & factuality controls
-                                </option>
-
-                                <option
-                                    value="regulated_decision"
-                                >
-                                    Regulated Decision — Strictest governance & human oversight
-                                </option>
-
-                            </select>
-
-
-                            <div
-                                id="risk-profile-description"
-                                style="
-                                    margin-top:8px;
-                                    color:#6f7c93;
-                                    font-size:12px;
-                                    line-height:1.5;
-                                "
-                            >
-                                Customer-facing AI with balanced latency,
-                                privacy, security, factuality and bias controls.
-                            </div>
 
                         </div>
 
@@ -1006,6 +936,433 @@
 
                         </table>
 
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- HOW CONTROLPLANE WORKS -->
+
+            <div
+                class="page"
+                id="page-how-it-works"
+            >
+
+                <div class="page-header how-it-works-header">
+
+                    <div>
+
+                        <div class="eyebrow-pill">
+                            <span class="eyebrow-dot"></span>
+                            REQUEST LIFECYCLE
+                        </div>
+
+                        <h1>
+                            How ControlPlane Works
+                        </h1>
+
+                        <p>
+                            ControlPlane sits between your application and the LLM,
+                            applying layered governance before and after model execution
+                            and recording the resulting decision for observability.
+                        </p>
+
+                    </div>
+
+                    <div class="architecture-summary">
+                        <span>REQUEST</span>
+                        <b>→</b>
+                        <span>GOVERN</span>
+                        <b>→</b>
+                        <span>GENERATE</span>
+                        <b>→</b>
+                        <span>VERIFY</span>
+                        <b>→</b>
+                        <span>DECIDE</span>
+                        <b>→</b>
+                        <span>AUDIT</span>
+                    </div>
+
+                </div>
+
+
+                <div class="architecture-note">
+                    <div class="architecture-note-icon">✦</div>
+                    <div>
+                        <strong>Governance follows the request all the way through.</strong>
+                        <span>
+                            Pre-request controls can stop unsafe work before model execution;
+                            response-side controls inspect the generated output before the
+                            final policy decision is returned.
+                        </span>
+                    </div>
+                </div>
+
+
+                <div class="architecture-flow">
+
+                    <div class="flow-column flow-input">
+
+                        <div class="flow-step compact-step">
+                            <div class="flow-step-number">01</div>
+                            <div class="flow-step-icon">⌁</div>
+                            <div class="flow-step-content">
+                                <span class="flow-kicker">ENTRY</span>
+                                <h3>User / Application</h3>
+                                <p>
+                                    A prompt enters ControlPlane with a governance profile
+                                    and request context.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="flow-connector vertical-connector">
+                            <span>↓</span>
+                        </div>
+
+                        <div class="flow-step compact-step">
+                            <div class="flow-step-number">02</div>
+                            <div class="flow-step-icon">⇄</div>
+                            <div class="flow-step-content">
+                                <span class="flow-kicker">GATEWAY</span>
+                                <h3>Request Gateway</h3>
+                                <p>
+                                    Validates the request, creates the execution context,
+                                    and orchestrates the governance pipeline.
+                                </p>
+                            </div>
+                        </div>
+
+                    </div>
+
+
+                    <div class="flow-branch">
+
+                        <div class="flow-branch-label">
+                            PRE-REQUEST GOVERNANCE
+                        </div>
+
+                        <div class="governance-agent-grid">
+
+                            <div class="agent-card security-agent">
+                                <div class="agent-icon">⌁</div>
+                                <div>
+                                    <strong>Security</strong>
+                                    <span>Threat &amp; unsafe-use signals</span>
+                                </div>
+                            </div>
+
+                            <div class="agent-card privacy-agent">
+                                <div class="agent-icon">◆</div>
+                                <div>
+                                    <strong>Privacy</strong>
+                                    <span>Sensitive-data protection</span>
+                                </div>
+                            </div>
+
+                            <div class="agent-card bias-agent">
+                                <div class="agent-icon">⚖</div>
+                                <div>
+                                    <strong>Bias</strong>
+                                    <span>Fairness &amp; bias signals</span>
+                                </div>
+                            </div>
+
+                            <div class="agent-card cost-agent">
+                                <div class="agent-icon">$</div>
+                                <div>
+                                    <strong>Cost</strong>
+                                    <span>Budget &amp; usage controls</span>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <div class="parallel-badge">
+                            <span></span>
+                            Independent checks run in parallel
+                        </div>
+
+                    </div>
+
+
+                    <div class="flow-connector main-connector">
+                        <span>↓</span>
+                    </div>
+
+
+                    <div class="decision-gate pre-decision-gate">
+                        <div class="decision-gate-head">
+                            <div>
+                                <span class="flow-kicker">CONTROL POINT</span>
+                                <h3>Pre-Decision</h3>
+                            </div>
+                            <span class="decision-chip">GOVERNANCE</span>
+                        </div>
+
+                        <div class="decision-options">
+                            <div class="decision-option allow-option">
+                                <span class="decision-dot"></span>
+                                <strong>ALLOW</strong>
+                                <small>Continue to model</small>
+                            </div>
+                            <div class="decision-option block-option">
+                                <span class="decision-dot"></span>
+                                <strong>BLOCK</strong>
+                                <small>Stop before execution</small>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <div class="flow-split">
+                        <div class="split-line"></div>
+                        <div class="split-label">ALLOWED REQUESTS CONTINUE</div>
+                    </div>
+
+
+                    <div class="flow-step model-step">
+                        <div class="flow-step-number">03</div>
+                        <div class="flow-step-icon">✦</div>
+                        <div class="flow-step-content">
+                            <span class="flow-kicker">EXECUTION</span>
+                            <h3>Model Gateway</h3>
+                            <p>
+                                The configured model provider generates the response.
+                                Usage, latency, model information and cost are captured
+                                for the request.
+                            </p>
+                        </div>
+                        <div class="model-gateway-badge">
+                            <span class="pulse-dot"></span>
+                            LLM
+                        </div>
+                    </div>
+
+
+                    <div class="flow-connector vertical-connector">
+                        <span>↓</span>
+                    </div>
+
+
+                    <div class="flow-branch response-branch">
+
+                        <div class="flow-branch-label">
+                            POST-RESPONSE GOVERNANCE
+                        </div>
+
+                        <div class="governance-agent-grid response-agent-grid">
+
+                            <div class="agent-card factuality-agent">
+                                <div class="agent-icon">◎</div>
+                                <div>
+                                    <strong>Factuality</strong>
+                                    <span>Claims, evidence &amp; verification</span>
+                                </div>
+                            </div>
+
+                            <div class="agent-card bias-agent">
+                                <div class="agent-icon">⚖</div>
+                                <div>
+                                    <strong>Bias</strong>
+                                    <span>Response-level bias signals</span>
+                                </div>
+                            </div>
+
+                            <div class="agent-card privacy-agent">
+                                <div class="agent-icon">◆</div>
+                                <div>
+                                    <strong>Privacy</strong>
+                                    <span>Output data protection</span>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <div class="parallel-badge">
+                            <span></span>
+                            Response checks are evaluated before final policy action
+                        </div>
+
+                    </div>
+
+
+                    <div class="flow-connector main-connector">
+                        <span>↓</span>
+                    </div>
+
+
+                    <div class="decision-gate policy-gate">
+                        <div class="decision-gate-head">
+                            <div>
+                                <span class="flow-kicker">FINAL CONTROL</span>
+                                <h3>Policy Engine</h3>
+                            </div>
+                            <span class="decision-chip">DECISION</span>
+                        </div>
+
+                        <p class="policy-description">
+                            Combines governance signals and policy rules to determine
+                            what happens to the generated response.
+                        </p>
+
+                        <div class="policy-options">
+                            <div class="policy-option allow-option">
+                                <strong>ALLOW</strong>
+                                <span>Return response</span>
+                            </div>
+                            <div class="policy-option modify-option">
+                                <strong>MODIFY</strong>
+                                <span>Apply response action</span>
+                            </div>
+                            <div class="policy-option review-option">
+                                <strong>REVIEW</strong>
+                                <span>Escalate to human</span>
+                            </div>
+                            <div class="policy-option block-option">
+                                <strong>BLOCK</strong>
+                                <span>Prevent delivery</span>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <div class="flow-connector vertical-connector">
+                        <span>↓</span>
+                    </div>
+
+
+                    <div class="outcome-grid">
+
+                        <div class="outcome-card human-review-outcome">
+                            <div class="outcome-icon">!</div>
+                            <div>
+                                <span class="flow-kicker">ESCALATION</span>
+                                <h3>Human Review</h3>
+                                <p>
+                                    Requests requiring human judgment enter the review
+                                    queue and can be resolved with an explicit decision.
+                                </p>
+                                <button
+                                    class="architecture-link"
+                                    data-page-target="reviews"
+                                >
+                                    Open Human Reviews →
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="outcome-card audit-outcome">
+                            <div class="outcome-icon">▤</div>
+                            <div>
+                                <span class="flow-kicker">TRACEABILITY</span>
+                                <h3>Audit &amp; Metrics</h3>
+                                <p>
+                                    Decisions, request IDs, governance signals, latency,
+                                    usage and observability data remain traceable.
+                                </p>
+                                <button
+                                    class="architecture-link"
+                                    data-page-target="audit"
+                                >
+                                    Open Audit Log →
+                                </button>
+                            </div>
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <div class="architecture-lower-grid">
+
+                    <div class="architecture-panel">
+                        <div class="architecture-panel-header">
+                            <div>
+                                <span class="flow-kicker">WHY LAYERS?</span>
+                                <h2>Layered control instead of a single filter</h2>
+                            </div>
+                        </div>
+
+                        <div class="layer-list">
+                            <div class="layer-row">
+                                <span class="layer-number">01</span>
+                                <div>
+                                    <strong>Pre-request governance</strong>
+                                    <p>Stop or constrain risky requests before they consume model resources.</p>
+                                </div>
+                            </div>
+                            <div class="layer-row">
+                                <span class="layer-number">02</span>
+                                <div>
+                                    <strong>Model execution</strong>
+                                    <p>Keep provider execution behind a single model gateway with usage and latency visibility.</p>
+                                </div>
+                            </div>
+                            <div class="layer-row">
+                                <span class="layer-number">03</span>
+                                <div>
+                                    <strong>Post-response verification</strong>
+                                    <p>Inspect the generated output instead of trusting the model response by default.</p>
+                                </div>
+                            </div>
+                            <div class="layer-row">
+                                <span class="layer-number">04</span>
+                                <div>
+                                    <strong>Policy, review &amp; audit</strong>
+                                    <p>Turn signals into an explicit action and preserve a traceable record of the decision.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <div class="architecture-panel architecture-links-panel">
+                        <div class="architecture-panel-header">
+                            <div>
+                                <span class="flow-kicker">EXPLORE THE SYSTEM</span>
+                                <h2>See the controls in action</h2>
+                            </div>
+                        </div>
+
+                        <button class="architecture-nav-card" data-page-target="governance">
+                            <span class="architecture-nav-icon">✓</span>
+                            <span>
+                                <strong>Governance</strong>
+                                <small>Inspect governance decisions and risk signals.</small>
+                            </span>
+                            <b>→</b>
+                        </button>
+
+                        <button class="architecture-nav-card" data-page-target="factuality">
+                            <span class="architecture-nav-icon">◎</span>
+                            <span>
+                                <strong>Factuality</strong>
+                                <small>Review evidence-backed response verification.</small>
+                            </span>
+                            <b>→</b>
+                        </button>
+
+                        <button class="architecture-nav-card" data-page-target="requests">
+                            <span class="architecture-nav-icon">⇄</span>
+                            <span>
+                                <strong>Requests</strong>
+                                <small>Trace individual requests and their outcomes.</small>
+                            </span>
+                            <b>→</b>
+                        </button>
+
+                        <button class="architecture-nav-card" data-page-target="metrics">
+                            <span class="architecture-nav-icon">⌁</span>
+                            <span>
+                                <strong>Metrics</strong>
+                                <small>Monitor performance, usage and governance trends.</small>
+                            </span>
+                            <b>→</b>
+                        </button>
                     </div>
 
                 </div>
