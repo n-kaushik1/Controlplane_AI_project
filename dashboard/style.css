@@ -5238,3 +5238,72 @@ button:focus-visible {
             0;
     }
 }
+/* ============================================================
+   GOVERNANCE PROFILE SELECT
+   ============================================================ */
+
+#governance-profile-wrapper {
+    width: 100%;
+}
+
+
+#governance-profile {
+    width: 100%;
+    box-sizing: border-box;
+
+    background-color: #0b111c !important;
+    color: #e7ebf5 !important;
+
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    border-radius: 9px;
+
+    color-scheme: dark;
+
+    cursor: pointer;
+}
+
+
+#governance-profile:hover {
+    border-color: rgba(124, 131, 255, 0.42);
+}
+
+
+#governance-profile:focus {
+    outline: none;
+
+    border-color: rgba(108, 99, 255, 0.65);
+
+    box-shadow:
+        0 0 0 3px rgba(108, 99, 255, 0.10);
+}
+
+
+/*
+ * IMPORTANT:
+ * These styles control the options shown when the
+ * native Chrome dropdown opens.
+ */
+
+#governance-profile option {
+    background-color: #0b111c !important;
+    color: #e7ebf5 !important;
+
+    padding: 12px 14px;
+}
+
+
+#governance-profile option:hover,
+#governance-profile option:focus,
+#governance-profile option:checked {
+    background-color: #252d52 !important;
+    color: #ffffff !important;
+}
+
+
+/*
+ * Keep the governance description readable.
+ */
+
+#governance-profile-description {
+    color: #687892;
+}

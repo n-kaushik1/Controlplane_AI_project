@@ -4104,6 +4104,10 @@ function initializeGenerateForm() {
     }
 
 
+    /* ========================================================
+       PROMPT INPUT
+       ======================================================== */
+
     let promptInput =
         $("prompt");
 
@@ -4143,9 +4147,9 @@ function initializeGenerateForm() {
     }
 
 
-    /*
-     * Prevent duplicate initialization.
-     */
+    /* ========================================================
+       PREVENT DUPLICATE INITIALIZATION
+       ======================================================== */
 
     if (
         form.dataset.cpInitialized ===
@@ -4160,6 +4164,348 @@ function initializeGenerateForm() {
         "true";
 
 
+    /* ========================================================
+       GOVERNANCE PROFILE
+       ========================================================
+
+       The backend supports:
+
+       1. customer_support
+       2. internal_copilot
+       3. regulated_decision
+
+       The selector is created dynamically so we do not need
+       to modify index.html.
+
+       Default:
+           Customer Support — Balanced safety & latency
+
+       The selected profile is sent to /generate as:
+
+           metadata: {
+               use_case: "...",
+               governance_profile: "..."
+           }
+
+       This keeps the existing generate flow intact.
+       ======================================================== */
+
+
+    let governanceProfile =
+        $("governance-profile");
+
+
+    /*
+     * If the selector already exists in HTML,
+     * make sure it is visible and usable.
+     */
+
+    if (governanceProfile) {
+
+        governanceProfile.style.display =
+            "block";
+
+    } else {
+
+        /*
+         * Create the Governance Profile section.
+         */
+
+        const profileWrapper =
+            document.createElement(
+                "div"
+            );
+
+
+        profileWrapper.id =
+            "governance-profile-wrapper";
+
+
+        profileWrapper.style.cssText = `
+            margin-top:24px;
+            margin-bottom:18px;
+        `;
+
+
+        profileWrapper.innerHTML = `
+
+            <div
+                style="
+                    color:#8b9ab5;
+                    font-size:12px;
+                    font-weight:700;
+                    letter-spacing:.12em;
+                    text-transform:uppercase;
+                    margin-bottom:9px;
+                "
+            >
+                GOVERNANCE PROFILE
+            </div>
+
+
+            <div
+                style="
+                    position:relative;
+                "
+            >
+
+                <select
+                    id="governance-profile"
+                    name="governance_profile"
+                    style="
+                        width:100%;
+                        box-sizing:border-box;
+                        appearance:none;
+                        -webkit-appearance:none;
+                        color-scheme:dark;
+                        background:
+                            linear-gradient(
+                                145deg,
+                                rgba(15,23,42,.96),
+                                rgba(8,13,23,.96)
+                            );
+                        color:#e7ebf5;
+                        border:
+                            1px solid
+                            rgba(148,163,184,.18);
+                        border-radius:9px;
+                        padding:
+                            15px 44px 15px 16px;
+                        font-size:14px;
+                        font-family:inherit;
+                        outline:none;
+                        cursor:pointer;
+                        transition:
+                            border-color 160ms ease,
+                            box-shadow 160ms ease,
+                            background 160ms ease;
+                    "
+                >
+
+                    <option
+                        value="customer_support"
+                    >
+                        Customer Support — Balanced safety & latency
+                    </option>
+
+
+                    <option
+                        value="internal_copilot"
+                    >
+                        Internal Copilot — Productivity focused
+                    </option>
+
+
+                    <option
+                        value="regulated_decision"
+                    >
+                        Regulated Decision — High safety & strict controls
+                    </option>
+
+                </select>
+
+
+                <span
+                    style="
+                        position:absolute;
+                        right:16px;
+                        top:50%;
+                        transform:translateY(-50%);
+                        color:#8491aa;
+                        pointer-events:none;
+                        font-size:12px;
+                    "
+                >
+                    ▼
+                </span>
+
+            </div>
+
+
+            <div
+                id="governance-profile-description"
+                style="
+                    margin-top:8px;
+                    color:#687892;
+                    font-size:11px;
+                    line-height:1.5;
+                "
+            >
+                Balanced controls for customer-facing AI.
+            </div>
+
+        `;
+
+
+        /*
+         * Insert the selector immediately before
+         * the Generate Response button area.
+         *
+         * First try to locate the submit button.
+         */
+
+        const submitButton =
+            form.querySelector(
+                "button[type='submit']"
+            );
+
+
+        if (submitButton) {
+
+            /*
+             * The button may be inside a wrapper.
+             * Insert before the closest sensible block.
+             */
+
+            const buttonParent =
+                submitButton.parentElement;
+
+
+            if (
+                buttonParent &&
+                buttonParent !== form
+            ) {
+
+                buttonParent.before(
+                    profileWrapper
+                );
+
+            } else {
+
+                submitButton.before(
+                    profileWrapper
+                );
+            }
+
+        } else {
+
+            /*
+             * Fallback:
+             * Put the selector after the prompt.
+             */
+
+            promptInput.after(
+                profileWrapper
+            );
+        }
+
+
+        governanceProfile =
+            $("governance-profile");
+    }
+
+
+    /* ========================================================
+       GOVERNANCE PROFILE DESCRIPTIONS
+       ======================================================== */
+
+    const governanceDescriptions = {
+
+        customer_support:
+            "Balanced controls for customer-facing AI.",
+
+        internal_copilot:
+            "Moderate risk controls with stronger productivity and latency flexibility.",
+
+        regulated_decision:
+            "Strict controls for high-risk or regulated decision-support workflows."
+    };
+
+
+    /*
+     * Default profile.
+     *
+     * This matches the profile shown in your previous
+     * working screenshot.
+     */
+
+    if (governanceProfile) {
+
+        governanceProfile.value =
+            governanceProfile.value ||
+            "customer_support";
+
+
+        const description =
+            $("governance-profile-description");
+
+
+        if (description) {
+
+            description.textContent =
+                governanceDescriptions[
+                    governanceProfile.value
+                ] ||
+                governanceDescriptions.customer_support;
+        }
+
+
+        /*
+         * Update description whenever the user changes
+         * the governance profile.
+         */
+
+        governanceProfile.addEventListener(
+            "change",
+            () => {
+
+                const selectedProfile =
+                    governanceProfile.value;
+
+
+                if (description) {
+
+                    description.textContent =
+                        governanceDescriptions[
+                            selectedProfile
+                        ] ||
+                        "";
+                }
+
+
+                console.log(
+                    "[ControlPlane] Governance profile changed:",
+                    selectedProfile
+                );
+            }
+        );
+
+
+        /*
+         * Focus styling.
+         */
+
+        governanceProfile.addEventListener(
+            "focus",
+            () => {
+
+                governanceProfile.style.borderColor =
+                    "rgba(108,99,255,.65)";
+
+                governanceProfile.style.boxShadow =
+                    "0 0 0 3px rgba(108,99,255,.10)";
+            }
+        );
+
+
+        governanceProfile.addEventListener(
+            "blur",
+            () => {
+
+                governanceProfile.style.borderColor =
+                    "rgba(148,163,184,.18)";
+
+                governanceProfile.style.boxShadow =
+                    "none";
+            }
+        );
+    }
+
+
+    /* ========================================================
+       SUBMIT
+       ======================================================== */
+
     form.addEventListener(
         "submit",
         async event => {
@@ -4169,6 +4515,19 @@ function initializeGenerateForm() {
 
             const prompt =
                 promptInput.value;
+
+
+            /*
+             * Read the selected governance profile.
+             *
+             * Always fall back to customer_support so the
+             * existing behaviour remains unchanged if the
+             * selector is unavailable.
+             */
+
+            const selectedGovernanceProfile =
+                governanceProfile?.value ||
+                "customer_support";
 
 
             const submitButton =
@@ -4190,9 +4549,33 @@ function initializeGenerateForm() {
 
             try {
 
+                /*
+                 * Send the selected governance profile
+                 * through metadata.
+                 *
+                 * Existing metadata behaviour is preserved.
+                 */
+
+                const metadata = {
+
+                    use_case:
+                        selectedGovernanceProfile,
+
+                    governance_profile:
+                        selectedGovernanceProfile
+                };
+
+
+                console.log(
+                    "[ControlPlane] Generating with governance profile:",
+                    selectedGovernanceProfile
+                );
+
+
                 const result =
                     await generateRequest(
-                        prompt
+                        prompt,
+                        metadata
                     );
 
 
