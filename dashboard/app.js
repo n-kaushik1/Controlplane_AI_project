@@ -155,9 +155,33 @@ function escapeHTML(value) {
    API
    ============================================================ */
 
-async function apiFetch(path, options = {}) {
+/*
+ * Optional API key support. The key is only needed when the
+ * backend is started with API_KEY set; it is kept in
+ * sessionStorage (cleared when the tab closes).
+ */
+
+function getStoredApiKey() {
+    try {
+        return sessionStorage.getItem("controlplane_api_key") || "";
+    } catch (_) {
+        return "";
+    }
+}
+
+function storeApiKey(key) {
+    try {
+        sessionStorage.setItem("controlplane_api_key", key);
+    } catch (_) {
+        /* Storage unavailable - key applies to this call only */
+    }
+}
+
+async function apiFetch(path, options = {}, retried = false) {
 
     const url = `${API_BASE}${path}`;
+
+    const apiKey = getStoredApiKey();
 
     console.log(
         "[ControlPlane API]",
@@ -182,10 +206,25 @@ async function apiFetch(path, options = {}) {
                     }
                     : {}),
 
+                ...(apiKey ? { "X-API-Key": apiKey } : {}),
+
                 ...(options.headers || {})
             }
         }
     );
+
+
+    if (response.status === 401 && !retried) {
+
+        const entered = window.prompt(
+            "This ControlPlane instance requires an API key:"
+        );
+
+        if (entered) {
+            storeApiKey(entered.trim());
+            return apiFetch(path, options, true);
+        }
+    }
 
 
     if (!response.ok) {

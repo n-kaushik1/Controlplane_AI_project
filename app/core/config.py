@@ -60,6 +60,30 @@ class Settings(BaseSettings):
     API_PORT: int = 8000
 
     # =========================================================
+    # API HARDENING (all optional; disabled by default)
+    # =========================================================
+
+    # When set, mutating endpoints (/api/generate and
+    # /api/reviews/{id}/resolve) require a matching
+    # X-API-Key header.
+    API_KEY: str | None = None
+
+    # Maximum requests per client per minute on mutating
+    # endpoints. 0 disables rate limiting.
+    RATE_LIMIT_PER_MINUTE: int = 0
+
+    # Maximum accepted prompt length (characters).
+    MAX_PROMPT_CHARS: int = 8000
+
+    # Comma-separated list of extra browser origins allowed
+    # by CORS (the dashboard is same-origin by default).
+    CORS_ORIGINS: str = (
+        "http://127.0.0.1:5500,http://localhost:5500"
+    )
+
+    LOG_LEVEL: str = "INFO"
+
+    # =========================================================
     # FACTUALITY / RAG
     # =========================================================
 

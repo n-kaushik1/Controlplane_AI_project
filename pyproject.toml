@@ -1,0 +1,23 @@
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+extend-exclude = [".venv", "data", "logs"]
+
+[tool.ruff.lint]
+# Correctness-focused rules: syntax errors and pyflakes.
+select = ["E9", "F"]
+
+[tool.coverage.run]
+source = ["app"]
+omit = ["*/__pycache__/*"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true

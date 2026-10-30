@@ -2,10 +2,21 @@ from typing import Optional
 
 from fastapi import (
     APIRouter,
+    Depends,
+    Header,
     HTTPException,
+    Response,
 )
 
 from pydantic import BaseModel, Field
+
+from app.core.config import settings
+
+from app.core.security import (
+    enforce_rate_limit,
+    require_api_key,
+    sanitize_request_id,
+)
 
 
 from app.gateway.request_gateway import (
@@ -240,7 +251,12 @@ class GenerateRequest(
     BaseModel
 ):
 
-    prompt: str
+    prompt: str = Field(
+        max_length=settings.MAX_PROMPT_CHARS,
+        description=(
+            "User prompt to govern and send to the model."
+        ),
+    )
 
     metadata: Optional[
         dict
@@ -302,11 +318,11 @@ class ReviewDecisionRequest(
     BaseModel
 ):
 
-    final_decision: str
+    final_decision: str = Field(max_length=32)
 
-    reviewer: str
+    reviewer: str = Field(max_length=128)
 
-    comment: str = ""
+    comment: str = Field(default="", max_length=2000)
 
 
 # =========================================================
@@ -325,6 +341,15 @@ def health():
 
         "service":
             "ControlPlane.ai",
+
+        "environment":
+            settings.ENVIRONMENT,
+
+        "auth_required":
+            bool(settings.API_KEY),
+
+        "rate_limit_per_minute":
+            settings.RATE_LIMIT_PER_MINUTE,
 
         "human_review":
             "enabled",
@@ -420,10 +445,16 @@ def risk_profile(
 # =========================================================
 
 @router.post(
-    "/generate"
+    "/generate",
+    dependencies=[
+        Depends(require_api_key),
+        Depends(enforce_rate_limit),
+    ],
 )
 def generate(
     request: GenerateRequest,
+    response: Response,
+    x_request_id: Optional[str] = Header(default=None),
 ):
 
     # -----------------------------------------------------
@@ -485,6 +516,22 @@ def generate(
     })
 
     # -----------------------------------------------------
+    # Honour a caller-supplied X-Request-ID so the HTTP
+    # request can be correlated with audit/review records.
+    # Unsafe or oversized values are ignored.
+    # -----------------------------------------------------
+
+    caller_request_id = sanitize_request_id(
+        x_request_id
+    )
+
+    if (
+        caller_request_id
+        and "request_id" not in metadata
+    ):
+        metadata["request_id"] = caller_request_id
+
+    # -----------------------------------------------------
     # Preserve the existing review-aware processing path.
     # -----------------------------------------------------
 
@@ -492,6 +539,17 @@ def generate(
         prompt=request.prompt,
         metadata=metadata,
     )
+
+    if isinstance(result, dict):
+
+        result_request_id = (
+            result.get("metadata") or {}
+        ).get("request_id")
+
+        if result_request_id:
+            response.headers["X-Request-ID"] = str(
+                result_request_id
+            )
 
     # -----------------------------------------------------
     # Make the governance context explicit in the response.
@@ -595,7 +653,11 @@ def get_review(
 # =========================================================
 
 @router.post(
-    "/reviews/{review_id}/resolve"
+    "/reviews/{review_id}/resolve",
+    dependencies=[
+        Depends(require_api_key),
+        Depends(enforce_rate_limit),
+    ],
 )
 def resolve_review(
     review_id: str,
