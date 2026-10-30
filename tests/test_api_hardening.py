@@ -231,3 +231,26 @@ def test_dashboard_is_served():
 
     assert response.status_code == 200
     assert "text/html" in response.headers["content-type"]
+
+
+@pytest.mark.parametrize("path", ["/", "/app.js", "/style.css"])
+def test_dashboard_assets_must_revalidate(path):
+
+    response = client.get(path)
+
+    assert response.status_code == 200
+    assert response.headers["cache-control"] == "no-cache"
+
+
+def test_dashboard_assets_are_versioned_by_mtime():
+
+    import re
+
+    html = client.get("/").text
+
+    assert re.search(r'href="style\.css\?v=\d+"', html)
+    assert re.search(r'src="app\.js\?v=\d+"', html)
+
+    # The versioned URLs must still resolve to the files.
+    assert client.get("/style.css?v=1").status_code == 200
+    assert client.get("/app.js?v=1").status_code == 200

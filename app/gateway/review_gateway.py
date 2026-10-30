@@ -80,7 +80,49 @@ class ReviewAwareGateway:
                 review["status"]
             )
 
+            self._sync_metrics(
+                request_id=review.get("request_id"),
+                review_id=review.get("review_id"),
+                review_status=review.get("status"),
+            )
+
         return result
+
+    # =========================================================
+    # METRICS SYNC
+    # =========================================================
+
+    def _sync_metrics(
+        self,
+        request_id,
+        review_id,
+        review_status,
+    ):
+        """
+        Keep the metrics event in step with the review lifecycle.
+
+        Never allowed to break a request or a review.
+        """
+
+        collector = getattr(
+            self.gateway,
+            "metrics_collector",
+            None,
+        )
+
+        update = getattr(
+            collector,
+            "update_review",
+            None,
+        )
+
+        if update is None:
+            return
+
+        try:
+            update(request_id, review_id, review_status)
+        except Exception:
+            pass
 
     # =========================================================
     # REVIEW API
@@ -111,7 +153,7 @@ class ReviewAwareGateway:
         comment: str = "",
     ):
 
-        return (
+        result = (
             self.review_service
             .resolve_review(
                 review_id=review_id,
@@ -120,6 +162,18 @@ class ReviewAwareGateway:
                 comment=comment,
             )
         )
+
+        if isinstance(result, dict):
+
+            self._sync_metrics(
+                request_id=(
+                    result.get("review") or {}
+                ).get("request_id"),
+                review_id=review_id,
+                review_status=result.get("status"),
+            )
+
+        return result
 
     def feedback_summary(self):
 

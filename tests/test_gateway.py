@@ -181,3 +181,17 @@ def test_gateway_handles_model_failure():
         "could not safely"
         in result["output"]
     )
+
+def test_generated_request_ids_are_unique():
+
+    from app.gateway.request_gateway import RequestGateway
+    from app.models.provider import MockModelProvider
+
+    gateway = RequestGateway(model_provider=MockModelProvider())
+
+    ids = {
+        gateway.process("hello")["metadata"]["request_id"]
+        for _ in range(200)
+    }
+
+    assert len(ids) == 200

@@ -252,7 +252,35 @@ class OpenAICompatibleProvider(ModelProvider):
     # GENERATE
     # ========================================================
 
+    #: Free-tier / router models occasionally return an empty
+    #: completion. One retry recovers most of those transient cases;
+    #: if the retry is also empty the gateway still fails closed.
+    EMPTY_RESPONSE_RETRIES = 1
+
     def generate(
+        self,
+        messages: List[Dict[str, str]],
+        **kwargs
+    ) -> Dict[str, Any]:
+
+        result = self._generate_once(messages, **kwargs)
+
+        retries = 0
+
+        while (
+            not str(result.get("text") or "").strip()
+            and retries < self.EMPTY_RESPONSE_RETRIES
+        ):
+
+            retries += 1
+
+            result = self._generate_once(messages, **kwargs)
+
+            result["metadata"]["empty_response_retries"] = retries
+
+        return result
+
+    def _generate_once(
         self,
         messages: List[Dict[str, str]],
         **kwargs

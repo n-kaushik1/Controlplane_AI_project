@@ -439,6 +439,26 @@ class PolicyEngine:
             )
 
         # ====================================================
+        # AGENT-REQUESTED REVIEW
+        #
+        # A governance agent explicitly asked for human review.
+        # That request is honoured even when the numeric risk is
+        # below this profile's review threshold.
+        # ====================================================
+
+        elif any(
+            rule.endswith(":REVIEW")
+            for rule in rules
+        ):
+
+            decision = "REVIEW"
+
+            reason = (
+                "A governance agent requested "
+                "human review."
+            )
+
+        # ====================================================
         # MODIFY
         # ====================================================
 

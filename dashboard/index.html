@@ -11,6 +11,11 @@
     <title>ControlPlane AI — Observability</title>
 
     <link
+        rel="icon"
+        href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%236366f1'/%3E%3Ctext x='16' y='22' font-family='Arial' font-size='15' font-weight='700' text-anchor='middle' fill='white'%3ECP%3C/text%3E%3C/svg%3E"
+    >
+
+    <link
         rel="stylesheet"
         href="style.css"
     >
@@ -379,7 +384,7 @@
 
                         </div>
 
-                        <span class="panel-badge">
+                        <span class="panel-badge" id="provider-badge">
                             LIVE LLM
                         </span>
 
@@ -462,7 +467,7 @@
                                     font-size:12px;
                                 "
                             >
-                                Uses the configured LLM provider.
+                                Uses the configured model provider.
                             </span>
 
                         </div>
@@ -504,9 +509,7 @@
                                 white-space:pre-wrap;
                                 line-height:1.65;
                             "
-                        >
-                            Enter a prompt above and click Generate Response.
-                        </div>
+                        >Enter a prompt above and click Generate Response.</div>
 
                     </div>
 
@@ -712,6 +715,29 @@
 
                                 </div>
 
+
+                                <div class="legend-item">
+
+                                    <span
+                                        class="legend-dot edit"
+                                    ></span>
+
+                                    <div>
+
+                                        <strong
+                                            id="edit-count"
+                                        >
+                                            —
+                                        </strong>
+
+                                        <small>
+                                            Modified
+                                        </small>
+
+                                    </div>
+
+                                </div>
+
                             </div>
 
                         </div>
@@ -891,11 +917,11 @@
                                 <tr>
 
                                     <th>
-                                        REQUEST ID
+                                        DECISION
                                     </th>
 
                                     <th>
-                                        DECISION
+                                        REQUEST ID
                                     </th>
 
                                     <th>
@@ -1406,7 +1432,15 @@
                                 <tr>
 
                                     <th>
+                                        TIME
+                                    </th>
+
+                                    <th>
                                         REQUEST ID
+                                    </th>
+
+                                    <th>
+                                        USE CASE
                                     </th>
 
                                     <th>
@@ -1435,7 +1469,7 @@
                                 <tr>
 
                                     <td
-                                        colspan="5"
+                                        colspan="7"
                                         class="empty-state"
                                     >
                                         Loading…
@@ -1525,6 +1559,54 @@
                         >
                             —
                         </div>
+
+                    </div>
+
+                </div>
+
+
+                <div class="insight-grid">
+
+                    <div class="panel insight-panel">
+
+                        <h2 class="insight-title">
+                            Average risk by agent
+                        </h2>
+
+                        <p class="insight-sub">
+                            Mean risk score each governance agent
+                            assigned (0 = safe, 1 = critical).
+                        </p>
+
+                        <div
+                            id="agent-risk-bars"
+                            class="bar-list"
+                        ></div>
+
+                    </div>
+
+
+                    <div class="panel insight-panel">
+
+                        <h2 class="insight-title">
+                            Decision mix
+                        </h2>
+
+                        <p class="insight-sub">
+                            Share of requests by final decision.
+                        </p>
+
+                        <div
+                            id="decision-mix"
+                            class="stack-bar"
+                            role="img"
+                            aria-label="Decision mix"
+                        ></div>
+
+                        <ul
+                            id="decision-mix-legend"
+                            class="mix-legend"
+                        ></ul>
 
                     </div>
 
@@ -1810,6 +1892,52 @@
                         >
                             —
                         </div>
+
+                    </div>
+
+                </div>
+
+
+                <div class="insight-grid insight-grid-3">
+
+                    <div class="panel insight-panel">
+
+                        <h2 class="insight-title">
+                            Latency
+                        </h2>
+
+                        <dl
+                            id="metrics-latency-detail"
+                            class="stat-list"
+                        ></dl>
+
+                    </div>
+
+
+                    <div class="panel insight-panel">
+
+                        <h2 class="insight-title">
+                            Cost
+                        </h2>
+
+                        <dl
+                            id="metrics-cost-detail"
+                            class="stat-list"
+                        ></dl>
+
+                    </div>
+
+
+                    <div class="panel insight-panel">
+
+                        <h2 class="insight-title">
+                            Human review
+                        </h2>
+
+                        <dl
+                            id="metrics-review-detail"
+                            class="stat-list"
+                        ></dl>
 
                     </div>
 

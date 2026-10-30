@@ -406,6 +406,26 @@ class ReviewService:
                     str(reason)
                 )
 
+            # Orchestrator results carry reasons per agent, not at
+            # the top level; surface the agents that flagged it.
+            for agent in inspection.get("agents") or []:
+
+                if not isinstance(agent, dict):
+                    continue
+
+                status = str(
+                    agent.get("status", "")
+                ).upper()
+
+                if (
+                    status in {"REVIEW", "WARN", "ESCALATE", "BLOCK"}
+                    and agent.get("reason")
+                ):
+                    reasons.append(
+                        f"{agent.get('agent', 'agent')}: "
+                        f"{agent['reason']}"
+                    )
+
         if result.get(
             "policy_decision"
         ) == "REVIEW":

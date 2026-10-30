@@ -51,6 +51,14 @@ class Settings(BaseSettings):
 
     DEFAULT_COST_BUDGET: float = 0.01
 
+    # EXPERIMENTAL. Enforce the per-profile policy engine (risk /
+    # uncertainty / cost / factuality thresholds and the
+    # consequential-action rule) on top of the agents. Its factuality
+    # and uncertainty rules are not yet calibrated: even with a working
+    # evidence source it can send or block ordinary answers, so it is
+    # off by default.
+    POLICY_ENGINE_ENABLED: bool = False
+
     # =========================================================
     # API
     # =========================================================

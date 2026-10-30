@@ -234,3 +234,58 @@ def test_non_list_non_string_messages_rejected():
 
     with pytest.raises(TypeError):
         _provider().generate(42)
+
+
+# ---------------------------------------------------------
+# Empty-response retry
+# ---------------------------------------------------------
+
+def _sequence_urlopen(monkeypatch, texts):
+
+    calls = {"n": 0}
+
+    def fake_urlopen(http_request, timeout=None):
+
+        text = texts[min(calls["n"], len(texts) - 1)]
+        calls["n"] += 1
+
+        return _FakeHTTPResponse(
+            {"choices": [{"message": {"content": text}}]}
+        )
+
+    monkeypatch.setattr(
+        provider_module.urllib_request, "urlopen", fake_urlopen
+    )
+
+    return calls
+
+
+def test_empty_response_is_retried_once(monkeypatch):
+
+    calls = _sequence_urlopen(monkeypatch, ["", "Recovered answer"])
+
+    result = _provider().generate("hi")
+
+    assert calls["n"] == 2
+    assert result["text"] == "Recovered answer"
+    assert result["metadata"]["empty_response_retries"] == 1
+
+
+def test_persistently_empty_response_still_returned_empty(monkeypatch):
+
+    calls = _sequence_urlopen(monkeypatch, ["", "   "])
+
+    result = _provider().generate("hi")
+
+    assert calls["n"] == 2
+    assert result["text"].strip() == ""
+
+
+def test_non_empty_response_is_not_retried(monkeypatch):
+
+    calls = _sequence_urlopen(monkeypatch, ["fine"])
+
+    result = _provider().generate("hi")
+
+    assert calls["n"] == 1
+    assert "empty_response_retries" not in result["metadata"]
