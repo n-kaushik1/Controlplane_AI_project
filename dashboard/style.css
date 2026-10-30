@@ -5307,3 +5307,235 @@ button:focus-visible {
 #governance-profile-description {
     color: #687892;
 }
+
+/* ============================================================
+   INSIGHT PANELS (Governance + Metrics pages)
+   ============================================================ */
+
+.insight-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    margin-top: 16px;
+}
+
+.insight-grid-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.insight-panel {
+    padding: 20px;
+}
+
+.insight-title {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.insight-sub {
+    margin: 4px 0 16px;
+    font-size: 12px;
+    color: var(--muted);
+}
+
+.insight-grid-3 .insight-title {
+    margin-bottom: 14px;
+}
+
+/* ---- per-agent risk bars ---- */
+
+.bar-list {
+    display: grid;
+    gap: 12px;
+}
+
+.bar-row {
+    display: grid;
+    grid-template-columns: 88px minmax(0, 1fr) 52px;
+    align-items: center;
+    gap: 12px;
+    font-size: 12px;
+}
+
+.bar-label {
+    color: var(--text-soft);
+}
+
+.bar-track {
+    height: 8px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.06);
+    overflow: hidden;
+}
+
+.bar-fill {
+    height: 100%;
+    min-width: 2px;
+    border-radius: 999px;
+    transition: width 0.4s ease;
+}
+
+.bar-low  { background: #34d399; }
+.bar-mid  { background: #fbbf24; }
+.bar-high { background: #fb7185; }
+
+.bar-value {
+    text-align: right;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+}
+
+/* ---- decision mix ---- */
+
+.stack-bar {
+    display: flex;
+    height: 14px;
+    border-radius: 999px;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.06);
+    gap: 2px;
+}
+
+.mix-seg {
+    display: block;
+    height: 100%;
+}
+
+.mix-allow   { background: #34d399; }
+.mix-review  { background: #fbbf24; }
+.mix-block   { background: #fb7185; }
+.mix-edit    { background: #38bdf8; }
+.mix-unknown { background: #94a3b8; }
+
+.mix-legend {
+    list-style: none;
+    margin: 16px 0 0;
+    padding: 0;
+    display: grid;
+    gap: 10px;
+    font-size: 12px;
+}
+
+.mix-legend li {
+    display: grid;
+    grid-template-columns: 12px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+}
+
+.mix-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+
+.mix-name {
+    color: var(--text-soft);
+}
+
+.mix-count {
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+}
+
+.mix-count em {
+    margin-left: 8px;
+    font-style: normal;
+    color: var(--muted);
+}
+
+.mix-empty {
+    display: block !important;
+    color: var(--muted);
+}
+
+/* ---- label / value lists ---- */
+
+.stat-list {
+    margin: 0;
+    display: grid;
+    gap: 0;
+}
+
+.stat-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+}
+
+.stat-row:last-child {
+    border-bottom: 0;
+}
+
+.stat-row dt {
+    color: var(--muted);
+}
+
+.stat-row dd {
+    margin: 0;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 900px) {
+
+    .insight-grid,
+    .insight-grid-3 {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+
+/* ============================================================
+   DECISION COLOURS - one palette for badges, donut and legends
+   ============================================================ */
+
+.legend-dot.allow  { background: #34d399; }
+.legend-dot.review { background: #fbbf24; }
+.legend-dot.block  { background: #fb7185; }
+.legend-dot.edit   { background: #38bdf8; }
+
+.legend {
+    min-width: 150px;
+}
+
+.legend .legend-item {
+    font-size: 12px;
+}
+
+.legend .legend-item strong {
+    display: inline-block;
+    min-width: 22px;
+    margin-right: 6px;
+    font-size: 16px;
+    color: var(--text);
+}
+
+.legend .legend-item small {
+    font-size: 12px;
+    color: var(--muted);
+}
+
+/* "View audit log" and similar link-style buttons */
+.text-button {
+    background: transparent;
+    border: 1px solid var(--border-strong);
+    border-radius: 8px;
+    padding: 7px 12px;
+    font-size: 12px;
+    color: var(--primary-light);
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.text-button:hover,
+.text-button:focus-visible {
+    background: var(--primary-soft);
+    border-color: var(--primary-light);
+    outline: none;
+}

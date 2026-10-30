@@ -1,3 +1,4 @@
+import re
 import time
 from typing import Any, Dict
 
@@ -714,8 +715,11 @@ class FactualityAgent:
 
             normalized = str(claim).strip().lower()
 
+            # Match at a word start so "tax" does not fire on
+            # "syntax" or "law" on "flaw"; suffixes still match
+            # ("taxes", "lawyers", "medications").
             if any(
-                term in normalized
+                re.search(rf"\b{re.escape(term)}", normalized)
                 for term in high_impact_terms
             ):
                 return True

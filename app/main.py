@@ -4,7 +4,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.api.routes import router
@@ -100,6 +100,11 @@ async def security_headers_and_timing(
     )
     response.headers["X-Process-Time-Ms"] = f"{elapsed_ms:.1f}"
 
+    # The dashboard is served unversioned, so make browsers revalidate
+    # on every load (cheap 304s) and pick up new deploys immediately.
+    if not request.url.path.startswith("/api/"):
+        response.headers.setdefault("Cache-Control", "no-cache")
+
     if request.url.path.startswith("/api/"):
         logger.info(
             "%s %s -> %s (%.1f ms)",
@@ -176,15 +181,42 @@ app.include_router(
 # ROOT — CONTROLPLANE DASHBOARD
 # =========================================================
 
+def _versioned_index_html() -> str:
+    """
+    index.html with ?v=<file mtime> on its CSS/JS URLs.
+
+    A browser that cached an older style.css / app.js would otherwise
+    keep using it after a deploy; a changed file gets a new URL, so it
+    is always downloaded.
+    """
+
+    html = (
+        DASHBOARD_DIR / "index.html"
+    ).read_text(encoding="utf-8")
+
+    for name in ("style.css", "app.js"):
+
+        version = int(
+            (DASHBOARD_DIR / name).stat().st_mtime
+        )
+
+        html = html.replace(
+            f'href="{name}"',
+            f'href="{name}?v={version}"',
+        ).replace(
+            f'src="{name}"',
+            f'src="{name}?v={version}"',
+        )
+
+    return html
+
+
 @app.get(
     "/",
     include_in_schema=False,
 )
 def root():
 
-    return FileResponse(
-        DASHBOARD_DIR
-        / "index.html",
-
-        media_type="text/html",
+    return HTMLResponse(
+        _versioned_index_html()
     )

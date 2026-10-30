@@ -12,6 +12,8 @@ from pydantic import BaseModel, Field
 
 from app.core.config import settings
 
+from app.policies import PolicyEngine
+
 from app.core.security import (
     enforce_rate_limit,
     require_api_key,
@@ -232,6 +234,14 @@ orchestrator = AgentOrchestrator(
 gateway = RequestGateway(
     model_provider=provider,
     orchestrator=orchestrator,
+    # The gateway switches to the request's own risk profile
+    # (see RequestGateway._select_policy_engine); this is only
+    # the default when a request carries none.
+    policy_engine=(
+        PolicyEngine("customer_support")
+        if settings.POLICY_ENGINE_ENABLED
+        else None
+    ),
     audit_logger=audit_logger,
     metrics_collector=metrics_collector,
 )
@@ -344,6 +354,12 @@ def health():
 
         "environment":
             settings.ENVIRONMENT,
+
+        "model_provider":
+            settings.MODEL_PROVIDER,
+
+        "model_name":
+            settings.MODEL_NAME,
 
         "auth_required":
             bool(settings.API_KEY),
@@ -757,6 +773,42 @@ def metrics_dashboard():
 # MONITORING EVENTS
 # =========================================================
 
+def _factuality_status(event):
+    """Status of the factuality agent for this event, if it ran."""
+
+    for phase in (event.response_governance, event.request_governance):
+
+        for agent in (phase or {}).get("agents") or []:
+
+            if (
+                isinstance(agent, dict)
+                and agent.get("agent") == "factuality"
+            ):
+                return agent.get("status")
+
+    return None
+
+
+def _event_to_dict(event):
+    """Serialise a MetricEvent for the events endpoints."""
+
+    return {
+        "request_id": event.request_id,
+        "decision": event.decision,
+        "risk_score": event.risk_score,
+        "confidence": event.confidence,
+        "factuality_status": _factuality_status(event),
+        "timestamp": event.timestamp,
+        "latency_ms": event.latency_ms,
+        "model_latency_ms": event.model_latency_ms,
+        "estimated_cost": event.estimated_cost,
+        "review_id": event.review_id,
+        "review_status": event.review_status,
+        "metadata": event.metadata,
+    }
+
+
+
 @router.get(
     "/metrics/events"
 )
@@ -776,44 +828,7 @@ def metrics_events():
         .events()
     )
 
-    return {
-
-        "events": [
-
-            {
-
-                "request_id":
-                    event.request_id,
-
-                "decision":
-                    event.decision,
-
-                "risk_score":
-                    event.risk_score,
-
-                "latency_ms":
-                    event.latency_ms,
-
-                "model_latency_ms":
-                    event.model_latency_ms,
-
-                "estimated_cost":
-                    event.estimated_cost,
-
-                "review_id":
-                    event.review_id,
-
-                "review_status":
-                    event.review_status,
-
-                "metadata":
-                    event.metadata,
-
-            }
-
-            for event in events
-        ]
-    }
+    return {"events": [_event_to_dict(event) for event in events]}
 
 
 # =========================================================
@@ -970,44 +985,7 @@ def observability_events(
     # Enforce the requested limit
     events = events[:limit]
 
-    return {
-
-        "events": [
-
-            {
-
-                "request_id":
-                    event.request_id,
-
-                "decision":
-                    event.decision,
-
-                "risk_score":
-                    event.risk_score,
-
-                "latency_ms":
-                    event.latency_ms,
-
-                "model_latency_ms":
-                    event.model_latency_ms,
-
-                "estimated_cost":
-                    event.estimated_cost,
-
-                "review_id":
-                    event.review_id,
-
-                "review_status":
-                    event.review_status,
-
-                "metadata":
-                    event.metadata,
-
-            }
-
-            for event in events
-        ]
-    }
+    return {"events": [_event_to_dict(event) for event in events]}
 
 
 # =========================================================

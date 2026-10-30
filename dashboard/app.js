@@ -133,6 +133,35 @@ function normalizeConfidence(value) {
 
 
 /* ============================================================
+   TIMESTAMPS
+   ============================================================ */
+
+function formatTimestamp(value) {
+
+    if (!value) {
+        return "—";
+    }
+
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) {
+        return String(value);
+    }
+
+    return date.toLocaleString(
+        undefined,
+        {
+            month: "short",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit"
+        }
+    );
+}
+
+
+/* ============================================================
    HTML ESCAPING
    ============================================================ */
 
@@ -1413,6 +1442,25 @@ async function checkHealth() {
         );
 
 
+        const providerBadge = $("provider-badge");
+
+        if (providerBadge && health.model_provider) {
+
+            const provider =
+                String(health.model_provider).toUpperCase();
+
+            providerBadge.textContent =
+                provider === "MOCK"
+                    ? "MOCK MODEL"
+                    : `LIVE · ${provider}`;
+
+            providerBadge.title =
+                health.model_name
+                    ? `Model: ${health.model_name}`
+                    : "";
+        }
+
+
         const indicator =
             document.querySelector(
                 ".live-indicator"
@@ -1739,6 +1787,7 @@ function decisionClass(decision) {
             return "cp-block";
 
         case "EDIT":
+        case "MODIFY":
             return "cp-edit";
 
         default:
@@ -2065,10 +2114,226 @@ function renderDashboard(data) {
 
 
     /* ========================================================
+       GOVERNANCE + METRICS DETAIL PANELS
+       ======================================================== */
+
+    renderInsights(data);
+
+
+    /* ========================================================
        FACTUALITY
        ======================================================== */
 
     loadFactuality();
+}
+
+
+/* ============================================================
+   INSIGHT PANELS (Governance + Metrics pages)
+   ============================================================ */
+
+const DECISION_MIX = [
+    { key: "ALLOW",  label: "Allow",  cls: "mix-allow"  },
+    { key: "REVIEW", label: "Review", cls: "mix-review" },
+    { key: "BLOCK",  label: "Block",  cls: "mix-block"  },
+    { key: "EDIT",   label: "Edit / modify", cls: "mix-edit" },
+    { key: "UNKNOWN", label: "Unknown", cls: "mix-unknown" }
+];
+
+const AGENT_RISK_ROWS = [
+    ["Security",   "security"],
+    ["Privacy",    "privacy"],
+    ["Bias",       "bias"],
+    ["Factuality", "factuality"],
+    ["Cost",       "cost"]
+];
+
+
+function statListHTML(rows) {
+
+    return rows
+        .map(
+            ([label, value]) => `
+                <div class="stat-row">
+                    <dt>${escapeHTML(label)}</dt>
+                    <dd>${escapeHTML(value)}</dd>
+                </div>
+            `
+        )
+        .join("");
+}
+
+
+function renderInsights(data) {
+
+    const risk = data.risk || {};
+    const decisions = data.decisions || {};
+    const performance = data.performance || {};
+    const cost = data.cost || {};
+    const reviews = data.human_review || {};
+
+
+    /* ---------- average risk by agent ---------- */
+
+    const bars = $("agent-risk-bars");
+
+    if (bars) {
+
+        bars.innerHTML = AGENT_RISK_ROWS
+            .map(
+                ([label, key]) => {
+
+                    const value = Math.min(
+                        Math.max(
+                            safeNumber(risk[key], 0),
+                            0
+                        ),
+                        1
+                    );
+
+                    const level =
+                        value >= 0.6
+                            ? "high"
+                            : value >= 0.3
+                                ? "mid"
+                                : "low";
+
+                    return `
+                        <div class="bar-row">
+                            <span class="bar-label">
+                                ${escapeHTML(label)}
+                            </span>
+                            <div
+                                class="bar-track"
+                                role="progressbar"
+                                aria-label="${escapeHTML(label)} risk"
+                                aria-valuemin="0"
+                                aria-valuemax="1"
+                                aria-valuenow="${value.toFixed(3)}"
+                            >
+                                <div
+                                    class="bar-fill bar-${level}"
+                                    style="width:${(value * 100).toFixed(1)}%"
+                                ></div>
+                            </div>
+                            <span class="bar-value">
+                                ${formatNumber(value, 3)}
+                            </span>
+                        </div>
+                    `;
+                }
+            )
+            .join("");
+    }
+
+
+    /* ---------- decision mix ---------- */
+
+    const counts = {
+        ALLOW: safeNumber(decisions.ALLOW),
+        REVIEW: safeNumber(decisions.REVIEW),
+        BLOCK: safeNumber(decisions.BLOCK),
+        EDIT:
+            safeNumber(decisions.EDIT) +
+            safeNumber(decisions.MODIFY),
+        UNKNOWN: safeNumber(decisions.UNKNOWN)
+    };
+
+    const total = Object.values(counts)
+        .reduce((a, b) => a + b, 0);
+
+    const mix = $("decision-mix");
+    const legend = $("decision-mix-legend");
+
+    if (mix && legend) {
+
+        if (total <= 0) {
+
+            mix.innerHTML = "";
+
+            legend.innerHTML = `
+                <li class="mix-empty">
+                    No requests yet. Generate a response to
+                    see the decision mix.
+                </li>
+            `;
+
+        } else {
+
+            mix.innerHTML = DECISION_MIX
+                .filter(item => counts[item.key] > 0)
+                .map(
+                    item => `
+                        <span
+                            class="mix-seg ${item.cls}"
+                            style="width:${(counts[item.key] / total * 100).toFixed(2)}%"
+                            title="${item.label}: ${counts[item.key]}"
+                        ></span>
+                    `
+                )
+                .join("");
+
+            legend.innerHTML = DECISION_MIX
+                .filter(item => counts[item.key] > 0)
+                .map(
+                    item => `
+                        <li>
+                            <span class="mix-dot ${item.cls}"></span>
+                            <span class="mix-name">
+                                ${item.label}
+                            </span>
+                            <span class="mix-count">
+                                ${formatInteger(counts[item.key])}
+                                <em>
+                                    ${formatPercent(
+                                        counts[item.key] / total * 100
+                                    )}
+                                </em>
+                            </span>
+                        </li>
+                    `
+                )
+                .join("");
+        }
+    }
+
+
+    /* ---------- metrics detail panels ---------- */
+
+    const latencyList = $("metrics-latency-detail");
+
+    if (latencyList) {
+
+        latencyList.innerHTML = statListHTML([
+            ["Average", formatMilliseconds(performance.average_ms)],
+            ["Fastest", formatMilliseconds(performance.minimum_ms)],
+            ["Slowest", formatMilliseconds(performance.maximum_ms)],
+            ["Model average", formatMilliseconds(performance.model_average_ms)]
+        ]);
+    }
+
+    const costList = $("metrics-cost-detail");
+
+    if (costList) {
+
+        costList.innerHTML = statListHTML([
+            ["Total", formatCurrency(cost.total)],
+            ["Average / request", formatCurrency(cost.average)],
+            ["Most expensive", formatCurrency(cost.maximum)]
+        ]);
+    }
+
+    const reviewList = $("metrics-review-detail");
+
+    if (reviewList) {
+
+        reviewList.innerHTML = statListHTML([
+            ["Sent to review", formatInteger(reviews.total_review_events)],
+            ["Pending", formatInteger(reviews.pending)],
+            ["Resolved", formatInteger(reviews.resolved)],
+            ["Review rate", `${formatNumber(reviews.review_rate ?? 0, 1)}%`]
+        ]);
+    }
 }
 
 
@@ -2108,10 +2373,15 @@ function renderDecisionDistribution(
         );
 
 
+    // MODIFY (content changed before release) shares the EDIT bucket.
     const edit =
         safeNumber(
             decisions.EDIT ??
             decisions.edit ??
+            0
+        ) + safeNumber(
+            decisions.MODIFY ??
+            decisions.modify ??
             0
         );
 
@@ -2252,10 +2522,10 @@ function renderDecisionDistribution(
 
     target.style.background =
         `conic-gradient(
-            #6c63ff 0% ${allowPercent}%,
-            #3bb8ff ${allowPercent}% ${reviewEnd}%,
-            #ff5f6d ${reviewEnd}% ${blockEnd}%,
-            #f6b73c ${blockEnd}% ${editEnd}%,
+            #34d399 0% ${allowPercent}%,
+            #fbbf24 ${allowPercent}% ${reviewEnd}%,
+            #fb7185 ${reviewEnd}% ${blockEnd}%,
+            #38bdf8 ${blockEnd}% ${editEnd}%,
             #475569 ${editEnd}% 100%
         )`;
 }
@@ -2643,8 +2913,7 @@ function renderReviews(data) {
 
 
                                 <div>
-                                                 decision
-                                    )}
+                                    ${decisionBadge(decision)}
                                 </div>
 
                             </div>
@@ -2681,9 +2950,7 @@ function renderReviews(data) {
                                         line-height:1.6;
                                         white-space:pre-wrap;
                                     "
-                                >
-                                    ${modelResponse}
-                                </div>
+                                >${modelResponse}</div>
 
                             </div>
 
@@ -3240,7 +3507,7 @@ function renderRequests(data) {
         table.innerHTML = `
             <tr>
                 <td
-                    colspan="5"
+                    colspan="7"
                     class="empty-state"
                 >
                     No requests available.
@@ -3272,12 +3539,32 @@ function renderRequests(data) {
                         request.confidence;
 
 
+                    const useCase =
+                        request.metadata?.use_case ||
+                        request.use_case ||
+                        "—";
+
                     return `
                         <tr>
 
                             <td>
+                                ${escapeHTML(
+                                    formatTimestamp(
+                                        request.timestamp
+                                    )
+                                )}
+                            </td>
+
+                            <td>
                                 ${requestIdHTML(
                                     requestId
+                                )}
+                            </td>
+
+                            <td>
+                                ${escapeHTML(
+                                    String(useCase)
+                                        .replace(/_/g, " ")
                                 )}
                             </td>
 
@@ -3362,8 +3649,9 @@ function renderAuditTable(events) {
 
                     const timestamp =
                         escapeHTML(
-                            event.timestamp ||
-                            "—"
+                            formatTimestamp(
+                                event.timestamp
+                            )
                         );
 
 

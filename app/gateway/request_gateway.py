@@ -1,9 +1,11 @@
 import time
+import uuid
 
 from typing import Any, Dict, Optional
 
 from app.gateway.model_gateway import ModelGateway
 from app.policies import PolicyEngine
+from app.policies.consequential import is_consequential_action
 
 
 class RequestGateway:
@@ -167,9 +169,13 @@ class RequestGateway:
 
         if request_id is None:
 
+            # time.time() only advances every ~16 ms on Windows and
+            # concurrent requests can share a microsecond, so a random
+            # suffix is required for the ID to be unique.
             request_id = (
                 f"req-"
                 f"{int(time.time() * 1000000)}"
+                f"-{uuid.uuid4().hex[:6]}"
             )
 
         metadata[
@@ -1024,6 +1030,9 @@ class RequestGateway:
                 uncertainty=uncertainty,
                 cost=cost,
                 verification_status=verification_status,
+                consequential_action=is_consequential_action(
+                    prompt
+                ),
             )
 
         elif hasattr(

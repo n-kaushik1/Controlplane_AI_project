@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from threading import Lock
 from typing import Any, Dict, List, Optional
 import time
@@ -13,6 +14,7 @@ VALID_DECISIONS = {
     "REVIEW",
     "BLOCK",
     "EDIT",
+    "MODIFY",
     "UNKNOWN",
 }
 
@@ -163,6 +165,12 @@ class MetricEvent:
     review_id: Optional[str] = None
 
     review_status: Optional[str] = None
+
+    # UTC ISO-8601 time the request was recorded.
+    timestamp: Optional[str] = None
+
+    # Mean confidence of the governance phases that reported one.
+    confidence: Optional[float] = None
 
     metadata: Dict[str, Any] = field(
         default_factory=dict
@@ -1297,10 +1305,42 @@ class MetricEvent:
         )
 
         # ----------------------------------------------------
+        # CONFIDENCE
+        #
+        # Mean of the request/response governance confidences
+        # that are present; None when neither reported one.
+        # ----------------------------------------------------
+
+        confidences = [
+            float(phase["confidence"])
+            for phase in (
+                request_governance,
+                response_governance,
+            )
+            if isinstance(phase, dict)
+            and isinstance(
+                phase.get("confidence"),
+                (int, float),
+            )
+        ]
+
+        confidence = (
+            round(sum(confidences) / len(confidences), 4)
+            if confidences
+            else None
+        )
+
+        # ----------------------------------------------------
         # CREATE EVENT
         # ----------------------------------------------------
 
         return cls(
+
+            timestamp=datetime.now(
+                timezone.utc
+            ).isoformat(),
+
+            confidence=confidence,
 
             request_id=request_id,
 
@@ -1419,6 +1459,39 @@ class MetricsCollector:
 
         return event
 
+    def update_review(
+        self,
+        request_id: Optional[str],
+        review_id: Optional[str],
+        review_status: Optional[str],
+    ) -> bool:
+        """
+        Attach human-review state to an already recorded request.
+
+        The gateway records a request before the review-aware layer
+        creates (or later resolves) its review, so the event has to
+        be updated afterwards. Returns True if an event was found.
+        """
+
+        if not request_id:
+            return False
+
+        with self._lock:
+
+            for event in reversed(self._events):
+
+                if event.request_id == str(request_id):
+
+                    if review_id is not None:
+                        event.review_id = str(review_id)
+
+                    if review_status is not None:
+                        event.review_status = str(review_status)
+
+                    return True
+
+        return False
+
     # ========================================================
     # COUNT
     # ========================================================
@@ -1447,6 +1520,7 @@ class MetricsCollector:
             "REVIEW": 0,
             "BLOCK": 0,
             "EDIT": 0,
+            "MODIFY": 0,
             "UNKNOWN": 0,
         }
 
@@ -1488,6 +1562,7 @@ class MetricsCollector:
                 "REVIEW": 0.0,
                 "BLOCK": 0.0,
                 "EDIT": 0.0,
+                "MODIFY": 0.0,
             }
 
         counts = (
@@ -1514,6 +1589,7 @@ class MetricsCollector:
                 "REVIEW",
                 "BLOCK",
                 "EDIT",
+                "MODIFY",
             )
         }
 
@@ -1804,7 +1880,7 @@ class MetricsCollector:
             str(
                 event.review_status
             ).upper()
-            == "RESOLVED"
+            in {"RESOLVED", "REJECTED"}
 
             for event in reviewed
         )

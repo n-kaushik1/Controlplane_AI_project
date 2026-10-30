@@ -182,7 +182,20 @@ concerns.
 
 ## 3. Bias Governance
 
-The bias agent evaluates text for potential bias-related concerns.
+The bias agent evaluates requests and responses for bias-related
+concerns and escalates them to **human review** (it never silently
+allows them, and never auto-blocks on its own):
+
+- **Group stereotyping**, including loaded questions such as
+  *"Explain why women are worse at engineering than men"*. Text that
+  debunks a stereotype ("that is a myth") or negates it ("women are not
+  worse…") is not flagged.
+- **Protected or proxy attributes in decisions about a person**, such as
+  *"Should we deny this loan? They are 62 and live in a poor
+  neighbourhood"*, which are escalated for human review.
+
+Detection is rule-based and intentionally conservative; it is a
+first-line filter, not a fairness audit.
 
 ## 4. Cost Governance
 
@@ -645,7 +658,23 @@ and policy behavior is handled by:
 
 ```text
 app/policies/engine.py
+app/policies/consequential.py
 ```
+
+The policy engine (per-profile risk, uncertainty, cost and factuality
+thresholds, plus the consequential-action rule that requires human
+oversight for decisions about a person) is **opt-in**:
+
+```env
+POLICY_ENGINE_ENABLED=true
+```
+
+It is **experimental and off by default**: its factuality and
+uncertainty rules are not yet calibrated, and in testing it sent or
+blocked ordinary answers (for example a plain capital-city question
+under the `regulated` profile) even with a working evidence source. With
+it off, the governance agents still decide `ALLOW` / `REVIEW` / `BLOCK`,
+and an agent's explicit `REVIEW` request is always honoured.
 
 ---
 
@@ -844,6 +873,7 @@ EVIDENCE_INDEX_FILE
 
 HF_TOKEN
 
+POLICY_ENGINE_ENABLED    (optional, enforce per-profile policy thresholds)
 API_KEY                  (optional, enables X-API-Key auth)
 RATE_LIMIT_PER_MINUTE    (optional, 0 = disabled)
 MAX_PROMPT_CHARS
@@ -1172,6 +1202,24 @@ The dashboard can display request volume, decisions, risk, review state,
 factuality information, and other observability signals exposed by the
 API.
 
+What each page shows:
+
+- **Overview**: KPIs, a live "Test AI Response" form (the badge shows the
+  active model provider), the decision donut, per-agent risk and recent
+  activity.
+- **Requests / Audit Log**: every governed request with time, use case,
+  decision, risk, confidence and latency.
+- **Governance**: average risk per agent and the decision mix.
+- **Human Reviews**: pending items with the flagging agent's reason, and
+  Approve / Reject actions. Review state is reflected live in the metrics
+  (pending / resolved).
+- **Metrics**: latency, cost and human-review statistics.
+
+Events returned by `GET /api/metrics/events` and
+`GET /api/observability/events` include `timestamp`, `confidence` and
+`factuality_status`. The dashboard files are served with
+`Cache-Control: no-cache`, so a new deploy is picked up on the next load.
+
 For the hosted prototype, the dashboard and FastAPI backend are served
 from the same Render web service.
 
@@ -1239,6 +1287,8 @@ tests/test_observability.py
 tests/test_controlplane_e2e.py
 tests/test_provider.py
 tests/test_api_hardening.py
+tests/test_bias_detection.py
+tests/test_governance_gaps.py
 ```
 
 The tests validate different layers of the implementation, including:
@@ -1464,7 +1514,14 @@ development and tests; OpenAI-compatible providers need a real API key.
 
 Factuality verification depends on the available evidence and retrieval
 quality. A verification signal should not automatically be interpreted
-as proof of universal truth.
+as proof of universal truth. Without a web-evidence key (`TAVILY_API_KEY`)
+most claims are reported as `UNKNOWN` and are allowed with the
+uncertainty recorded, so false statements can pass; high-impact claims
+that cannot be verified are sent to human review instead.
+
+The model provider may also return occasional empty completions on
+free-tier routes. The OpenAI-compatible provider retries once and the
+gateway fails closed (blocks) if the reply is still empty.
 
 ### Security hardening
 
