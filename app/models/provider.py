@@ -203,12 +203,12 @@ class OpenAICompatibleProvider(ModelProvider):
 
         self.base_url = (
             base_url
-            if base_url is not None
-            else getattr(
+            or getattr(
                 settings,
                 "MODEL_BASE_URL",
-                "https://openrouter.ai/api/v1"
+                None
             )
+            or "https://openrouter.ai/api/v1"
         )
 
         self.temperature = (
@@ -645,10 +645,13 @@ def create_model_provider(
                 None
             ),
             model_name=configured_model,
-            base_url=getattr(
-                settings,
-                "MODEL_BASE_URL",
-                "https://openrouter.ai/api/v1"
+            base_url=(
+                getattr(
+                    settings,
+                    "MODEL_BASE_URL",
+                    None
+                )
+                or "https://openrouter.ai/api/v1"
             ),
             temperature=getattr(
                 settings,
@@ -681,10 +684,13 @@ def create_model_provider(
                 None
             ),
             model_name=configured_model,
-            base_url=getattr(
-                settings,
-                "MODEL_BASE_URL",
-                "https://api.openai.com/v1"
+            base_url=(
+                getattr(
+                    settings,
+                    "MODEL_BASE_URL",
+                    None
+                )
+                or "https://api.openai.com/v1"
             ),
             temperature=getattr(
                 settings,

@@ -85,10 +85,6 @@ class EvidenceVerifier:
             claim
         )
 
-        evidence_tokens = cls._tokens(
-            evidence
-        )
-
         # Strong negation signals.
         contradiction_words = {
             "not",

@@ -2,6 +2,11 @@
 
 > **AI Governance, Observability, Factuality & Human Review**
 
+[![CI](https://github.com/n-kaushik1/Controlplane_AI_project/actions/workflows/ci.yml/badge.svg)](https://github.com/n-kaushik1/Controlplane_AI_project/actions/workflows/ci.yml)
+![Python](https://img.shields.io/badge/python-3.11-blue)
+![FastAPI](https://img.shields.io/badge/FastAPI-009688)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
 ControlPlane.ai is a prototype AI governance platform designed to place
 a governance and observability layer around AI/LLM applications. Instead
 of treating an LLM call as a direct `prompt → response` interaction,
@@ -10,9 +15,10 @@ execution and records the resulting decisions, risks, costs, evidence,
 reviews, and operational metrics.
 
 **Live prototype:** [ControlPlane_AI](https://controlplane-ai-bhn7.onrender.com)
+(hosted on a free tier, so the first request after idle may take a while to wake)
 **Public repository:**
-[ControlPlane_AI](https://github.com/n-kaushik1/Controlplane_AI_project.git)
-**License:** MIT
+[ControlPlane_AI](https://github.com/n-kaushik1/Controlplane_AI_project)
+**License:** [MIT](LICENSE)
 
 ---
 
@@ -43,8 +49,11 @@ reviews, and operational metrics.
 - [Running the Application](#running-the-application)
 - [Using the API](#using-the-api)
 - [Dashboard](#dashboard)
+- [API Security and Hardening](#api-security-and-hardening)
 - [Testing](#testing)
+- [Continuous Integration](#continuous-integration)
 - [Deployment](#deployment)
+- [Docker](#docker)
 - [Design Decisions](#design-decisions)
 - [Limitations and Prototype Scope](#limitations-and-prototype-scope)
 - [Future Improvements](#future-improvements)
@@ -600,19 +609,31 @@ requests and human-review actions.
 
 The policy layer defines use-case-specific governance profiles.
 
-Current profiles include:
+Current policy profiles (decision thresholds, lower = stricter):
 
-Profile Block Risk Review Risk Max Uncertainty Max Cost
-
----
-
-`customer_support` 0.85 0.60 0.75 0.05
-`internal_copilot` 0.80 0.55 0.70 0.10
-`decision_support` 0.65 0.35 0.45 0.20
-`regulated` 0.50 0.25 0.30 0.25
+| Profile            | Block Risk | Review Risk | Max Uncertainty | Max Cost |
+| ------------------ | ---------- | ----------- | --------------- | -------- |
+| `customer_support` | 0.85       | 0.60        | 0.75            | 0.05     |
+| `internal_copilot` | 0.80       | 0.55        | 0.70            | 0.10     |
+| `decision_support` | 0.65       | 0.35        | 0.45            | 0.20     |
+| `regulated`        | 0.50       | 0.25        | 0.30            | 0.25     |
 
 All current profiles require factual verification and enforce privacy,
 bias, and security checks.
+
+On top of these, the API exposes three enterprise **use-case risk
+profiles** (`app/context/risk_profiles.py`) selected through the
+`use_case` field of `POST /api/generate`:
+
+| Use case             | Risk level | Max risk | Max uncertainty | Max cost | Max latency |
+| -------------------- | ---------- | -------- | --------------- | -------- | ----------- |
+| `customer_support`   | high       | 0.55     | 0.70            | 0.03     | 3 s         |
+| `internal_copilot`   | high       | 0.65     | 0.75            | 0.05     | 5 s         |
+| `regulated_decision` | critical   | 0.25     | 0.35            | 0.10     | 10 s        |
+
+Aliases such as `customer`, `internal`, `regulated` and
+`decision_support` resolve to these profiles. Unknown values return
+`400`.
 
 These thresholds are defined in:
 
@@ -661,6 +682,7 @@ Controlplane_AI_project/
 │   │
 │   ├── core/
 │   │   ├── config.py
+│   │   ├── security.py
 │   │   ├── factuality_engine.py
 │   │   ├── evidence_retriever.py
 │   │   └── web_evidence_retriever.py
@@ -711,6 +733,7 @@ Controlplane_AI_project/
 │   ├── test_agents.py
 │   ├── test_audit.py
 │   ├── test_context.py
+│   ├── test_api_hardening.py
 │   ├── test_controlplane_e2e.py
 │   ├── test_evidence.py
 │   ├── test_factuality_gateway_integration.py
@@ -721,9 +744,16 @@ Controlplane_AI_project/
 │   ├── test_monitoring.py
 │   ├── test_observability.py
 │   ├── test_policy.py
+│   ├── test_provider.py
 │   └── test_review_integration.py
 │
+├── .github/workflows/ci.yml
+├── Dockerfile
+├── pyproject.toml
 ├── requirements.txt
+├── requirements-dev.txt
+├── .env.example
+├── LICENSE
 └── README.md
 ```
 
@@ -731,23 +761,22 @@ Controlplane_AI_project/
 
 # Technology Stack
 
-Layer Technology
-
----
-
-Backend API FastAPI
-Application server Uvicorn
-Validation / models Pydantic
-Configuration pydantic-settings
-Factuality embeddings Sentence Transformers
-Numerical processing NumPy
-HTTP testing / API client HTTPX
-Testing Pytest
-Frontend HTML, CSS, JavaScript
-Deployment Render
-Source control Git + GitHub
-
----
+| Layer                 | Technology            |
+| --------------------- | --------------------- |
+| Backend API           | FastAPI               |
+| Application server    | Uvicorn               |
+| Validation / models   | Pydantic              |
+| Configuration         | pydantic-settings     |
+| Factuality embeddings | Sentence Transformers |
+| Numerical processing  | NumPy                 |
+| HTTP testing / client | HTTPX                 |
+| Testing               | Pytest, pytest-cov    |
+| Linting               | Ruff                  |
+| Frontend              | HTML, CSS, JavaScript |
+| Containerisation      | Docker                |
+| CI                    | GitHub Actions        |
+| Deployment            | Render                |
+| Source control        | Git + GitHub          |
 
 # Dependencies
 
@@ -814,9 +843,16 @@ EVIDENCE_FILE
 EVIDENCE_INDEX_FILE
 
 HF_TOKEN
+
+API_KEY                  (optional, enables X-API-Key auth)
+RATE_LIMIT_PER_MINUTE    (optional, 0 = disabled)
+MAX_PROMPT_CHARS
+CORS_ORIGINS
+LOG_LEVEL
 ```
 
-A local `.env` file must be used for development.
+A local `.env` file must be used for development. Copy
+[`.env.example`](.env.example) to `.env` and fill in real values.
 
 ### Example
 
@@ -885,21 +921,14 @@ pip install -r requirements.txt
 
 ## 4. Configure environment variables
 
-Create a local `.env` file if required:
+Copy the example file and fill in your keys:
 
-```text
-.env
+```bash
+cp .env.example .env        # Windows: copy .env.example .env
 ```
 
-Add the required configuration values for your environment.:
-MODEL_PROVIDER="openrouter"
-MODEL_NAME="openrouter/free"
-MODEL_BASE_URL="https://openrouter.ai/api/v1"
-MODEL_TEMPERATURE="0.2"
-MODEL_MAX_TOKENS="512"
-MODEL_TIMEOUT_SECONDS="60"
-MODEL_API_KEY=your_real_openrouter_key
-TAVILY_API_KEY=your_real_tavily_key
+To run completely offline (no API keys), set `MODEL_PROVIDER=mock` in
+`.env`. With `openrouter` / `openai` you need a real `MODEL_API_KEY`.
 
 ---
 
@@ -973,7 +1002,28 @@ curl -X POST "http://127.0.0.1:8000/api/generate" \
 ```
 
 The response contains the governed model result and associated
-governance information.
+governance information (abridged):
+
+```json
+{
+  "decision": "ALLOW",
+  "action": "ALLOW",
+  "output": "...",
+  "risk_score": 0.12,
+  "request_governance": { "...": "..." },
+  "response_governance": { "...": "..." },
+  "policy_decision": { "...": "..." },
+  "estimated_cost": 0.0,
+  "latency_ms": 840.2,
+  "use_case": "customer_support",
+  "risk_level": "high",
+  "metadata": { "request_id": "req-1761820000000000" }
+}
+```
+
+Send an `X-Request-ID` header (letters, digits, `.`, `_`, `-`; max 64
+chars) to supply your own trace ID. It is propagated through governance,
+review and audit records and echoed back in the response header.
 
 ---
 
@@ -1127,14 +1177,46 @@ from the same Render web service.
 
 ---
 
+# API Security and Hardening
+
+All controls are **opt-in** so the demo and local development work
+without configuration (implemented in `app/core/security.py`).
+
+| Control            | How to enable                     | Behaviour                                                                                  |
+| ------------------ | --------------------------------- | ------------------------------------------------------------------------------------------ |
+| API-key auth       | `API_KEY=<secret>`                | `POST /api/generate` and `POST /api/reviews/{id}/resolve` need `X-API-Key`; constant-time comparison; `401` otherwise |
+| Rate limiting      | `RATE_LIMIT_PER_MINUTE=30`        | Per-client sliding window on the same endpoints; `429` with `Retry-After`                  |
+| Prompt size limit  | `MAX_PROMPT_CHARS` (default 8000) | Oversized prompts rejected with `422`                                                      |
+| Request-ID hygiene | always on                         | Caller-supplied `X-Request-ID` accepted only if log-safe                                   |
+| Response headers   | always on                         | `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `X-Process-Time-Ms`        |
+| CORS               | `CORS_ORIGINS`                    | Explicit origin allow-list (the dashboard is same-origin)                                  |
+
+Read-only endpoints (health, metrics, reviews list) stay public. When
+`API_KEY` is set the dashboard prompts for the key once per browser
+session and sends it with each request.
+
+The rate limiter is in-memory and per-process; a multi-instance
+deployment would need a shared store such as Redis.
+
+---
+
 # Testing
 
-The project includes unit, integration, and end-to-end tests.
+The project includes unit, integration, and end-to-end tests (runs in
+about a second with the offline mock provider).
 
 Run the full suite with:
 
 ```bash
 pytest -q
+```
+
+With coverage and lint:
+
+```bash
+pip install -r requirements-dev.txt
+ruff check app tests
+pytest --cov
 ```
 
 Test coverage is organized around:
@@ -1155,6 +1237,8 @@ tests/test_monitoring.py
 tests/test_metrics_api.py
 tests/test_observability.py
 tests/test_controlplane_e2e.py
+tests/test_provider.py
+tests/test_api_hardening.py
 ```
 
 The tests validate different layers of the implementation, including:
@@ -1171,7 +1255,21 @@ The tests validate different layers of the implementation, including:
 - Monitoring
 - Metrics APIs
 - Observability
+- Model-provider layer (offline, with a faked HTTP transport)
+- API-key auth, rate limiting, input limits and request-ID propagation
 - End-to-end request flow
+
+---
+
+# Continuous Integration
+
+`.github/workflows/ci.yml` runs on every push to `main` and every pull
+request:
+
+1. Install dependencies (CPU-only PyTorch for speed).
+2. `ruff check app tests`
+3. `pytest --cov` using the offline `mock` provider, so no secrets are
+   needed.
 
 ---
 
@@ -1248,6 +1346,18 @@ FastAPI Application
    v                  v
 REST API          Dashboard
 ```
+
+---
+
+# Docker
+
+```bash
+docker build -t controlplane-ai .
+docker run --rm -p 8000:8000 --env-file .env controlplane-ai
+```
+
+The image runs as a non-root user, includes a `/api/health` health
+check, and honours the `PORT` variable used by hosting platforms.
 
 ---
 
@@ -1346,9 +1456,9 @@ A production system should use durable, access-controlled storage.
 
 ### Model-provider configuration
 
-The provider abstraction supports OpenAI-compatible integrations, while
-the current route wiring includes a mock provider for predictable
-development/testing behavior.
+The provider is selected by `MODEL_PROVIDER` (`mock`, `openrouter`,
+`openai`). The `mock` provider gives predictable, offline behavior for
+development and tests; OpenAI-compatible providers need a real API key.
 
 ### Factuality limitations
 
@@ -1399,19 +1509,11 @@ Potential next steps include:
 
 # Public Links
 
----
-
-Resource Link
-
----
-
-GitHub Repository https://github.com/n-kaushik1/Controlplane_AI_project
-
-Live Prototype https://controlplane-ai-bhn7.onrender.com
-
-Prototype Demo Video DEMO_VIDEO_URL
-
----
+| Resource             | Link                                                                   |
+| -------------------- | ---------------------------------------------------------------------- |
+| GitHub Repository    | https://github.com/n-kaushik1/Controlplane_AI_project                  |
+| Live Prototype       | https://controlplane-ai-bhn7.onrender.com                              |
+| Prototype Demo Video | https://drive.google.com/file/d/17j1ylfG507OqPwjgSTJWkZZlegKaGf30/view |
 
 ---
 
@@ -1422,16 +1524,7 @@ This project is licensed under the **MIT License**.
 The MIT License permits use, modification, distribution, and
 private/commercial use subject to the conditions of the license.
 
-A standard `LICENSE` file containing the full MIT License text should be
-present at the repository root:
-
-```text
-LICENSE
-```
-
-If it has not yet been committed, add the MIT license file through
-GitHub's license template or create a standard MIT `LICENSE` file before
-final submission.
+The full license text is in [`LICENSE`](LICENSE).
 
 ---
 
@@ -1469,18 +1562,8 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-Also make .env file with following:
-
-```text
-MODEL_PROVIDER="openrouter"
-MODEL_NAME="openrouter/free"
-MODEL_BASE_URL="https://openrouter.ai/api/v1"
-MODEL_TEMPERATURE="0.2"
-MODEL_MAX_TOKENS="512"
-MODEL_TIMEOUT_SECONDS="60"
-MODEL_API_KEY=your_real_openrouter_key
-TAVILY_API_KEY=your_real_tavily_key
-```
+Create a `.env` file first (`cp .env.example .env`, then add your keys, or
+set `MODEL_PROVIDER=mock` to run without any).
 
 Then open:
 
